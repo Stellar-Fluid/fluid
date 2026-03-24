@@ -43,6 +43,10 @@ Optional:
 - `FLUID_RATE_LIMIT_WINDOW_MS` - Rate limit window in milliseconds (default: 60000)
 - `FLUID_RATE_LIMIT_MAX` - Max requests per window per IP (default: 5)
 
+Mock API keys for local development:
+- `fluid-free-demo-key` - Free tier, 2 requests per minute
+- `fluid-pro-demo-key` - Pro tier, 5 requests per minute
+
 ## API Endpoints
 
 ### GET /health
@@ -66,6 +70,11 @@ Request:
 }
 ```
 
+Headers:
+```http
+x-api-key: fluid-free-demo-key
+```
+
 Response:
 ```json
 {
@@ -76,6 +85,32 @@ Response:
 ```
 
 If `submit: true` and `STELLAR_HORIZON_URL` is set, the server will submit the transaction and return the hash.
+
+If a key exceeds its tier limit, the server returns `429 Too Many Requests` with a response that cites the API key limit.
+
+## Rate Limit Verification
+
+You can verify that rate limiting is applied per API key by sending three requests with the free key and then one with the pro key:
+
+```bash
+curl -X POST http://127.0.0.1:3000/fee-bump \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: fluid-free-demo-key" \
+  --data '{"xdr":"AAAA","submit":false}'
+```
+
+Repeat the same request three times within one minute. The first two requests will reach the handler, and the third returns `429 Too Many Requests`.
+
+Then send the same request with the pro key:
+
+```bash
+curl -X POST http://127.0.0.1:3000/fee-bump \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: fluid-pro-demo-key" \
+  --data '{"xdr":"AAAA","submit":false}'
+```
+
+That request still goes through because the limit is tracked separately per API key.
 
 ## Architecture
 
@@ -99,6 +134,9 @@ server/
 ├── src/
 │   ├── index.ts
 │   ├── config.ts
+│   ├── middleware/
+│   │   ├── apiKeys.ts
+│   │   └── rateLimit.ts
 │   └── handlers/
 │       └── feeBump.ts
 ├── dist/

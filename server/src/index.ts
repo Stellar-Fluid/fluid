@@ -4,6 +4,8 @@ import rateLimit from "express-rate-limit";
 import cors from "cors";
 import { feeBumpHandler } from "./handlers/feeBump";
 import { loadConfig } from "./config";
+import { apiKeyMiddleware } from "./middleware/apiKeys";
+import { apiKeyRateLimit } from "./middleware/rateLimit";
 
 dotenv.config();
 
@@ -58,7 +60,7 @@ app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok" });
 });
 
-app.post("/fee-bump", limiter, (req: Request, res: Response) => {
+app.post("/fee-bump", apiKeyMiddleware, apiKeyRateLimit, limiter, (req: Request, res: Response) => {
   feeBumpHandler(req, res, config);
 });
 
