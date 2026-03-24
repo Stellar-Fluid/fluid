@@ -5,6 +5,7 @@ export interface Config {
   feeMultiplier: number;
   networkPassphrase: string;
   horizonUrl?: string;
+  allowedOrigins: string[];
 }
 
 export function loadConfig(): Config {
@@ -24,6 +25,13 @@ export function loadConfig(): Config {
     "Test SDF Network ; September 2015";
   const horizonUrl = process.env.STELLAR_HORIZON_URL;
 
+  // Parse allowed origins from comma-separated environment variable
+  const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || "";
+  const allowedOrigins = allowedOriginsEnv
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
   return {
     feePayerSecret,
     feePayerPublicKey,
@@ -31,5 +39,6 @@ export function loadConfig(): Config {
     feeMultiplier,
     networkPassphrase,
     horizonUrl,
+    allowedOrigins,
   };
 }

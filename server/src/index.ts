@@ -1,5 +1,6 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
+import cors from "cors";
 import { feeBumpHandler } from "./handlers/feeBump";
 import { loadConfig } from "./config";
 
@@ -9,6 +10,41 @@ const app = express();
 app.use(express.json());
 
 const config = loadConfig();
+
+// CORS configuration with origin validation
+const corsOptions = {
+  origin: (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void,
+  ) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) {
+      callback(null, false);
+      return;
+    }
+
+    // Check if the origin is in the allowed list
+    if (config.allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    // Reject the request - pass error to trigger error handler
+    callback(new Error("Origin not allowed by CORS"), false);
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+
+// Error handler for CORS rejections
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  if (err.message === "Origin not allowed by CORS") {
+    res.status(403).json({ error: "CORS not allowed" });
+    return;
+  }
+  next(err);
+});
 
 app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok" });
