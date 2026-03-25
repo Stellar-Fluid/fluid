@@ -1,47 +1,52 @@
-import prisma from "../utils/db";
-
 export interface TransactionRecord {
   hash: string;
+  tenantId: string;
   status: 'pending' | 'submitted' | 'success' | 'failed';
   createdAt: Date;
   updatedAt: Date;
 }
 
+// Simple in-memory storage for transactions
+// In production, this should be replaced with a proper database
 class TransactionStore {
-  async addTransaction(hash: string, status: 'pending' | 'submitted'): Promise<void> {
-    await prisma.transaction.upsert({
-      where: { hash },
-      update: { status },
-      create: { hash, status },
-    });
+  private transactions: Map<string, TransactionRecord> = new Map();
+
+  addTransaction(hash: string, tenantId: string, status: 'pending' | 'submitted'): void {
+    const record: TransactionRecord = {
+      hash,
+      tenantId,
+      status,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.transactions.set(hash, record);
     console.log(`[TransactionStore] Added transaction ${hash} with status ${status}`);
   }
 
-  async updateTransactionStatus(hash: string, status: 'success' | 'failed'): Promise<void> {
-    try {
-      await prisma.transaction.update({ where: { hash }, data: { status } });
+  updateTransactionStatus(hash: string, status: 'success' | 'failed'): void {
+    const record = this.transactions.get(hash);
+    if (record) {
+      record.status = status;
+      record.updatedAt = new Date();
       console.log(`[TransactionStore] Updated transaction ${hash} to status ${status}`);
-    } catch {
+    } else {
       console.log(`[TransactionStore] Transaction ${hash} not found for status update`);
     }
   }
 
-  async getPendingTransactions(): Promise<TransactionRecord[]> {
-    const pending = await prisma.transaction.findMany({
-      where: { status: { in: ['pending', 'submitted'] } },
-    });
+  getPendingTransactions(): TransactionRecord[] {
+    const pending = Array.from(this.transactions.values())
+      .filter(tx => tx.status === 'pending' || tx.status === 'submitted');
     console.log(`[TransactionStore] Found ${pending.length} pending/submitted transactions`);
-    return pending as TransactionRecord[];
+    return pending;
   }
 
-  async getTransaction(hash: string): Promise<TransactionRecord | null> {
-    const record = await prisma.transaction.findUnique({ where: { hash } });
-    return record as TransactionRecord | null;
+  getTransaction(hash: string): TransactionRecord | undefined {
+    return this.transactions.get(hash);
   }
 
-  async getAllTransactions(): Promise<TransactionRecord[]> {
-    const records = await prisma.transaction.findMany();
-    return records as TransactionRecord[];
+  getAllTransactions(): TransactionRecord[] {
+    return Array.from(this.transactions.values());
   }
 }
 

@@ -21,8 +21,13 @@ fluid/
 │   ├── tsconfig.json
 │   └── README.md
 │
-├── fluid-server/        # Rust implementation (legacy)
-│   └── ...
+├── fluid-server/        # Rust server and WASM transaction signer
+│   ├── src/
+│   │   ├── main.rs      # Axum health-check server entry point
+│   │   └── lib.rs       # Stellar transaction signing library + WASM exports
+│   ├── wasm-demo/       # Node/browser validation harness for the WASM build
+│   ├── Cargo.toml
+│   └── Makefile
 │
 ├── .gitignore          # Git ignore rules
 ├── README.md           # Main project documentation
@@ -38,5 +43,6 @@ fluid/
 ## Technology Stack
 
 - **Server**: Node.js + TypeScript + Express
+- **Rust/WASM**: Axum + wasm-bindgen + stellar-xdr
 - **Client**: Node.js + TypeScript
 - **Stellar SDK**: @stellar/stellar-sdk (JavaScript/TypeScript)

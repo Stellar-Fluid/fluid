@@ -7,6 +7,7 @@ dist/
 build/
 target/
 *.tsbuildinfo
+*.node
 
 # Environment variables
 .env
@@ -16,7 +17,6 @@ target/
 # Logs
 *.log
 initial/
-fluid-server/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -37,6 +37,11 @@ issues/
 # Rust
 Cargo.lock
 target/
+fluid-server/pkg/
+rust_smoke/
+rustup-init.exe
+wasm-pack.tar.gz
+wasm-pack-v0.14.0-x86_64-pc-windows-msvc/
 
 # TypeScript
 *.js.map
@@ -44,3 +49,5 @@ target/
 # Test coverage
 coverage/
 .nyc_output/
+issue.md
+pr.md

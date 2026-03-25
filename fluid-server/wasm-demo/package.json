@@ -1,0 +1,14 @@
+{
+  "name": "fluid-wasm-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "node server.mjs",
+    "test:browser": "node browser-check.mjs",
+    "test:node": "node check-node.cjs"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^11.3.0",
+    "playwright": "^1.52.0"
+  }
+}

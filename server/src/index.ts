@@ -2,14 +2,25 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express, { NextFunction, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
+
 import { loadConfig } from "./config";
+import { AppError } from "./errors/AppError";
 import { feeBumpHandler } from "./handlers/feeBump";
+import {
+  getHorizonFailoverClient,
+  initializeHorizonFailoverClient,
+} from "./horizon/failoverClient";
 import { apiKeyMiddleware } from "./middleware/apiKeys";
+import { globalErrorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { apiKeyRateLimit } from "./middleware/rateLimit";
+import { transactionStore } from "./workers/transactionStore";
+import {
+  getLedgerMonitor,
+  initializeLedgerMonitor,
+} from "./workers/ledgerMonitor";
+
 import { initializeLedgerMonitor } from "./workers/ledgerMonitor";
 import { transactionStore } from "./workers/transactionStore";
-import { notFoundHandler, globalErrorHandler } from "./middleware/errorHandler";
-import { AppError } from "./errors/AppError";
 
 dotenv.config();
 
@@ -17,35 +28,39 @@ const app = express();
 app.use(express.json());
 
 const config = loadConfig();
+if (config.horizonUrls.length > 0) {
+  initializeHorizonFailoverClient(config);
+}
 
-// Configure rate limiter
 const limiter = rateLimit({
   windowMs: config.rateLimitWindowMs,
   max: config.rateLimitMax,
-  message: { error: "Too many requests from this IP, please try again later.", code: "RATE_LIMITED" },
+  message: {
+    error: "Too many requests from this IP, please try again later.",
+    code: "RATE_LIMITED",
+  },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// CORS configuration with origin validation
 const corsOptions = {
   origin: (
     origin: string | undefined,
-    callback: (err: Error | null, allow?: boolean) => void
+    callback: (err: Error | null, allow?: boolean) => void,
   ) => {
-    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) {
       callback(null, false);
       return;
     }
 
-    // Check if the origin is in the allowed list
-    if (config.allowedOrigins.includes(origin)) {
+    if (
+      config.allowedOrigins.length === 0 ||
+      config.allowedOrigins.includes(origin)
+    ) {
       callback(null, true);
       return;
     }
 
-    // Reject the request - pass error to trigger error handler
     callback(new Error("Origin not allowed by CORS"), false);
   },
   credentials: true,
@@ -53,7 +68,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Error handler for CORS rejections
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   if (err.message === "Origin not allowed by CORS") {
     return next(new AppError("CORS not allowed", 403, "AUTH_FAILED"));
@@ -61,19 +75,32 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   next(err);
 });
 
-// Routes
 app.get("/health", (req: Request, res: Response) => {
-  const accounts = config.feePayerAccounts.map((a) => ({
-    publicKey: a.publicKey,
-    status: "active",
+  const accounts = config.signerPool.getSnapshot().map((account) => ({
+    publicKey: account.publicKey,
+    status: account.active ? "active" : "inactive",
+    in_flight: account.inFlight,
+    total_uses: account.totalUses,
+    sequence_number: account.sequenceNumber,
+    balance: account.balance,
   }));
+
   res.json({
     status: "ok",
     fee_payers: accounts,
+    horizon_nodes:
+      getHorizonFailoverClient()?.getNodeStatuses() ??
+      getLedgerMonitor()?.getNodeStatuses() ??
+      config.horizonUrls.map((url) => ({
+        url,
+        state: "Active",
+        consecutiveFailures: 0,
+      })),
     total: accounts.length,
   });
 });
 
+// Fee bump endpoint
 app.post(
   "/fee-bump",
   apiKeyMiddleware,
@@ -81,44 +108,33 @@ app.post(
   limiter,
   (req: Request, res: Response, next: NextFunction) => {
     feeBumpHandler(req, res, config, next);
-  },
+  }
 );
 
-// Test endpoint to manually add a pending transaction
-app.post("/test/add-transaction", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { hash, status = "pending" } = req.body;
-    if (!hash) {
-      return res.status(400).json({ error: "Transaction hash is required" });
-    }
-    await transactionStore.addTransaction(hash, status);
-    res.json({ message: `Transaction ${hash} added with status ${status}` });
-  } catch (err) {
-    next(err);
+app.post("/test/add-transaction", (req: Request, res: Response) => {
+  const { hash, status = "pending" } = req.body;
+
+  if (!hash) {
+    res.status(400).json({ error: "Transaction hash is required" });
+    return;
   }
+
+  transactionStore.addTransaction(hash, status);
+  res.json({ message: `Transaction ${hash} added with status ${status}` });
 });
 
-// Test endpoint to view all transactions
-app.get("/test/transactions", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const transactions = await transactionStore.getAllTransactions();
-    res.json({ transactions });
-  } catch (err) {
-    next(err);
-  }
+app.get("/test/transactions", (req: Request, res: Response) => {
+  const transactions = transactionStore.getAllTransactions();
+  res.json({ transactions });
 });
 
-// 404 - must come after all routes
 app.use(notFoundHandler);
-
-// Global error handler - must be last
 app.use(globalErrorHandler);
 
 const PORT = process.env.PORT || 3000;
 
-// Initialize ledger monitor worker if Horizon URL is configured
-let ledgerMonitor: any = null;
-if (config.horizonUrl) {
+let ledgerMonitor: ReturnType<typeof initializeLedgerMonitor> | null = null;
+if (config.horizonUrls.length > 0) {
   try {
     ledgerMonitor = initializeLedgerMonitor(config);
     ledgerMonitor.start();
@@ -127,13 +143,20 @@ if (config.horizonUrl) {
     console.error("Failed to start ledger monitor:", error);
   }
 } else {
-  console.log("No Horizon URL configured - ledger monitor disabled");
+  console.log("No Horizon URLs configured - ledger monitor disabled");
 }
 
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`Fluid server running on http://0.0.0.0:${PORT}`);
   console.log(`Fee payers loaded: ${config.feePayerAccounts.length}`);
-  config.feePayerAccounts.forEach((a, i) => {
-    console.log(`  [${i + 1}] ${a.publicKey}`);
+  config.feePayerAccounts.forEach((account, index) => {
+    console.log(`  [${index + 1}] ${account.publicKey}`);
+  });
+  console.log(
+    `Horizon strategy: ${config.horizonSelectionStrategy} | nodes: ${config.horizonUrls.length}`
+  );
+  config.horizonUrls.forEach((url, index) => {
+    console.log(`  [${index + 1}] ${url}`);
   });
 });

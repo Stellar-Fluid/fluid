@@ -1,0 +1,12 @@
+[package]
+name = "fluid-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }   # For parsing CLI commands
+indicatif = "0.17"                               # For progress bars during tasks
+ratatui = "0.24"                                 # For nice terminal UI output
+serde = { version = "1.0", features = ["derive"] } # For serializing/deserializing data
+reqwest = { version = "0.12", features = ["json"] } # For making HTTP requests (if CLI talks to an API)
+tokio = { version = "1", features = ["full"] }     # Async runtime needed for reqwest
