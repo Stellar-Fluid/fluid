@@ -34,12 +34,13 @@ export async function feeBumpHandler(
         "Validation failed for fee-bump request:",
         parsedBody.error.format()
       );
+
       return next(
         new AppError(
           `Validation failed: ${JSON.stringify(parsedBody.error.format())}`,
           400,
-          "INVALID_XDR"
-        )
+          "INVALID_XDR",
+        ),
       );
     }
 

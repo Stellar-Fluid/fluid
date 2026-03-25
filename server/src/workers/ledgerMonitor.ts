@@ -76,11 +76,13 @@ export class LedgerMonitor {
       if (txRecord.successful) {
         console.log(`[LedgerMonitor] Transaction ${transaction.hash} was SUCCESSFUL`);
         transactionStore.updateTransactionStatus(transaction.hash, "success");
+        await this.webhookService.dispatch(transaction.tenantId, transaction.hash, "success");
       } else {
         console.log(
           `[LedgerMonitor] Transaction ${transaction.hash} was UNSUCCESSFUL`
         );
         transactionStore.updateTransactionStatus(transaction.hash, "failed");
+        await this.webhookService.dispatch(transaction.tenantId, transaction.hash, "failed");
       }
     } catch (error: any) {
       if (error.response?.status === 404 || error.message?.includes("404")) {
@@ -88,6 +90,7 @@ export class LedgerMonitor {
           `[LedgerMonitor] Transaction ${transaction.hash} not found on ledger (404) - marking as failed`
         );
         transactionStore.updateTransactionStatus(transaction.hash, "failed");
+        await this.webhookService.dispatch(transaction.tenantId, transaction.hash, "failed");
       } else {
         console.error(
           `[LedgerMonitor] Error checking transaction ${transaction.hash}:`,
@@ -98,6 +101,7 @@ export class LedgerMonitor {
             `[LedgerMonitor] Test/invalid transaction ${transaction.hash} - marking as failed`
           );
           transactionStore.updateTransactionStatus(transaction.hash, "failed");
+          await this.webhookService.dispatch(transaction.tenantId, transaction.hash, "failed");
         }
       }
     }
@@ -118,7 +122,7 @@ export function initializeLedgerMonitor(config: Config): LedgerMonitor {
     ledgerMonitor.stop();
   }
 
-  ledgerMonitor = new LedgerMonitor(config);
+  ledgerMonitor = new LedgerMonitor(config, new WebhookService());
   return ledgerMonitor;
 }
 

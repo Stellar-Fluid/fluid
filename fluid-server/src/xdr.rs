@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
 use stellar_xdr::curr::{
-    FeeBumpTransaction, FeeBumpTransactionInnerTx, Limits, Operation, OperationBody, ReadXdr,
-    Transaction, TransactionEnvelope, TransactionV0,
+    FeeBumpTransaction, FeeBumpTransactionInnerTx, Limits, Operation, ReadXdr, Transaction,
+    TransactionEnvelope, TransactionV0,
 };
 use tracing::info;
 
@@ -115,40 +115,8 @@ pub fn log_xdr_breakdown(parsed: &ParsedTransaction) {
     }
 }
 
-fn operation_name(body: &OperationBody) -> &'static str {
-    match body {
-        OperationBody::CreateAccount(_) => "CreateAccount",
-        OperationBody::Payment(_) => "Payment",
-        OperationBody::PathPaymentStrictReceive(_) => "PathPaymentStrictReceive",
-        OperationBody::ManageSellOffer(_) => "ManageSellOffer",
-        OperationBody::CreatePassiveSellOffer(_) => "CreatePassiveSellOffer",
-        OperationBody::SetOptions(_) => "SetOptions",
-        OperationBody::ChangeTrust(_) => "ChangeTrust",
-        OperationBody::AllowTrust(_) => "AllowTrust",
-        OperationBody::AccountMerge(_) => "AccountMerge",
-        OperationBody::Inflation => "Inflation",
-        OperationBody::ManageData(_) => "ManageData",
-        OperationBody::BumpSequence(_) => "BumpSequence",
-        OperationBody::ManageBuyOffer(_) => "ManageBuyOffer",
-        OperationBody::PathPaymentStrictSend(_) => "PathPaymentStrictSend",
-        OperationBody::CreateClaimableBalance(_) => "CreateClaimableBalance",
-        OperationBody::ClaimClaimableBalance(_) => "ClaimClaimableBalance",
-        OperationBody::BeginSponsoringFutureReserves(_) => "BeginSponsoringFutureReserves",
-        OperationBody::EndSponsoringFutureReserves => "EndSponsoringFutureReserves",
-        OperationBody::RevokeSponsorship(_) => "RevokeSponsorship",
-        OperationBody::Clawback(_) => "Clawback",
-        OperationBody::ClawbackClaimableBalance(_) => "ClawbackClaimableBalance",
-        OperationBody::SetTrustLineFlags(_) => "SetTrustLineFlags",
-        OperationBody::LiquidityPoolDeposit(_) => "LiquidityPoolDeposit",
-        OperationBody::LiquidityPoolWithdraw(_) => "LiquidityPoolWithdraw",
-        OperationBody::InvokeHostFunction(_) => "InvokeHostFunction",
-        OperationBody::ExtendFootprintTtl(_) => "ExtendFootprintTtl",
-        OperationBody::RestoreFootprint(_) => "RestoreFootprint",
-    }
-}
-
 fn log_operation(index: usize, op: &Operation) {
-    info!(index, op_type = operation_name(&op.body), "operation");
+    info!(index, op_type = op.body.name(), "operation");
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -160,8 +128,9 @@ mod tests {
     use stellar_xdr::curr::{
         Asset, FeeBumpTransaction, FeeBumpTransactionEnvelope, FeeBumpTransactionExt,
         FeeBumpTransactionInnerTx, Limits, Memo, MuxedAccount, Operation, OperationBody,
-        PaymentOp, Preconditions, SequenceNumber, Transaction, TransactionEnvelope,
-        TransactionExt, TransactionV1Envelope, Uint256, VecM, WriteXdr,
+        PaymentOp, Preconditions, SequenceNumber, TimeBounds, Transaction, TransactionEnvelope,
+        TransactionExt, TransactionV0, TransactionV0Envelope, TransactionV0Ext, TransactionV1Envelope,
+        Uint256, VecM, WriteXdr,
     };
 
     /// Build a minimal Classic V1 transaction with a single Payment op.
@@ -189,6 +158,39 @@ mod tests {
         };
 
         let envelope = TransactionEnvelope::Tx(TransactionV1Envelope {
+            tx,
+            signatures: VecM::default(),
+        });
+
+        let bytes = envelope.to_xdr(Limits::none()).unwrap();
+        STANDARD.encode(bytes)
+    }
+
+    /// Build a minimal Classic V0 transaction with a single Payment op.
+    fn classic_v0_xdr() -> String {
+        let source_ed25519 = Uint256([0u8; 32]);
+        let dest = MuxedAccount::Ed25519(Uint256([1u8; 32]));
+
+        let op = Operation {
+            source_account: None,
+            body: OperationBody::Payment(PaymentOp {
+                destination: dest,
+                asset: Asset::Native,
+                amount: 10_000_000, // 1 XLM
+            }),
+        };
+
+        let tx = TransactionV0 {
+            source_account_ed25519: source_ed25519,
+            fee: 100,
+            seq_num: SequenceNumber(1),
+            time_bounds: Option::<TimeBounds>::None,
+            memo: Memo::None,
+            operations: vec![op].try_into().unwrap(),
+            ext: TransactionV0Ext::V0,
+        };
+
+        let envelope = TransactionEnvelope::TxV0(TransactionV0Envelope {
             tx,
             signatures: VecM::default(),
         });
@@ -319,9 +321,23 @@ mod tests {
             println!("  seq_num  : {}", tx.seq_num.0);
             println!("  op_count : {}", tx.operations.len());
             for (i, op) in tx.operations.iter().enumerate() {
-                println!("  op[{i}]    : {}", operation_name(&op.body));
+                println!("  op[{i}]    : {}", op.body.name());
             }
         }
+
+        log_xdr_breakdown(&parsed);
+    }
+
+    #[test]
+    fn test_parse_classic_v0() {
+        init_tracing();
+        let xdr = classic_v0_xdr();
+        let parsed = parse_xdr(&xdr).expect("valid V0 XDR should parse");
+
+        assert!(
+            matches!(parsed, ParsedTransaction::V0(_)),
+            "expected V0, got {parsed:?}"
+        );
 
         log_xdr_breakdown(&parsed);
     }
@@ -341,7 +357,7 @@ mod tests {
             println!("  seq_num  : {}", tx.seq_num.0);
             println!("  op_count : {}", tx.operations.len());
             for (i, op) in tx.operations.iter().enumerate() {
-                println!("  op[{i}]    : {}", operation_name(&op.body));
+                println!("  op[{i}]    : {}", op.body.name());
             }
         } else {
             panic!("expected V1, got {parsed:?}");
@@ -374,7 +390,7 @@ mod tests {
             println!("  inner.seq_num  : {}", inner.seq_num.0);
             println!("  inner.op_count : {}", inner.operations.len());
             for (i, op) in inner.operations.iter().enumerate() {
-                println!("  inner.op[{i}]    : {}", operation_name(&op.body));
+                println!("  inner.op[{i}]    : {}", op.body.name());
             }
         }
 
@@ -393,6 +409,13 @@ mod tests {
     }
 
     #[test]
+    fn xdr_error_display_includes_base64_context() {
+        let err = parse_xdr("not!!!valid===base64").unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("base64 decode error"), "msg: {msg}");
+    }
+
+    #[test]
     fn test_malformed_xdr_returns_error() {
         // Valid base64 but not valid XDR.
         let b64 = STANDARD.encode(b"this is definitely not XDR data");
@@ -401,6 +424,15 @@ mod tests {
             matches!(result, Err(XdrError::Xdr(_))),
             "expected Xdr error, got {result:?}"
         );
+    }
+
+    #[test]
+    fn xdr_error_display_includes_xdr_context() {
+        // Valid base64 but not valid XDR.
+        let b64 = STANDARD.encode(b"this is definitely not XDR data");
+        let err = parse_xdr(&b64).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("XDR parse error"), "msg: {msg}");
     }
 
     #[test]

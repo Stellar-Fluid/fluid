@@ -32,7 +32,9 @@ npm run dev
 See `.env.example` for all configuration options.
 
 Required:
-- `FLUID_FEE_PAYER_SECRET` - Your Stellar secret key for paying fees
+- Fee payer key material:
+  - Development-only fallback: `FLUID_FEE_PAYER_SECRET` (comma-separated Stellar secrets)
+  - Production (recommended): HashiCorp Vault KV (see `docs/vault.md`)
 
 Optional:
 - `FLUID_BASE_FEE` - Base fee in stroops (default: 100)

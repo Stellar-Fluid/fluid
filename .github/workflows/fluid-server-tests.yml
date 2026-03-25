@@ -1,0 +1,44 @@
+name: Fluid Server Rust Tests
+
+on:
+  push:
+    paths:
+      - "fluid-server/**"
+      - ".github/workflows/fluid-server-tests.yml"
+  pull_request:
+    paths:
+      - "fluid-server/**"
+      - ".github/workflows/fluid-server-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-coverage:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fluid-server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin --locked
+
+      - name: Run unit tests
+        run: cargo test --all
+
+      - name: Run coverage (lib only, fail under 80%)
+        run: cargo tarpaulin --lib --fail-under 80 -o Html --output-dir coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluid-server-coverage
+          path: fluid-server/coverage/**
+

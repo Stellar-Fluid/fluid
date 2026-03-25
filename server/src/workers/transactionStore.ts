@@ -1,5 +1,6 @@
 export interface TransactionRecord {
   hash: string;
+  tenantId: string;
   status: 'pending' | 'submitted' | 'success' | 'failed';
   createdAt: Date;
   updatedAt: Date;
@@ -10,9 +11,10 @@ export interface TransactionRecord {
 class TransactionStore {
   private transactions: Map<string, TransactionRecord> = new Map();
 
-  addTransaction(hash: string, status: 'pending' | 'submitted'): void {
+  addTransaction(hash: string, tenantId: string, status: 'pending' | 'submitted'): void {
     const record: TransactionRecord = {
       hash,
+      tenantId,
       status,
       createdAt: new Date(),
       updatedAt: new Date(),
