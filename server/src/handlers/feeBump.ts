@@ -126,10 +126,10 @@ export async function feeBumpHandler(
     // Extract operation count safely
     const operationCount = innerTransaction.operations?.length || 0;
     const feeAmount = calculateFeeBumpFee(
-      operationCount,
-      config.baseFee,
-      config.feeMultiplier
-    );
+  innerTransaction,
+  config.baseFee,
+  config.feeMultiplier
+);
 
     console.log("Fee calculation:", {
       operationCount,
