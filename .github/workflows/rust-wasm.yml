@@ -1,0 +1,56 @@
+name: Rust WASM
+
+on:
+  push:
+    branches:
+      - main
+      - compilation-pipeline
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Set up wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: fluid-server/wasm-demo/package-lock.json
+
+      - name: Install demo dependencies
+        run: npm ci
+        working-directory: fluid-server/wasm-demo
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: fluid-server/wasm-demo
+
+      - name: Run Rust unit tests
+        run: cargo test --manifest-path fluid-server/Cargo.toml --lib
+
+      - name: Build WASM packages
+        run: |
+          wasm-pack build --release --target web --out-dir pkg/web
+          wasm-pack build --release --target nodejs --out-dir pkg/node
+        working-directory: fluid-server
+
+      - name: Run Node demo validation
+        run: npm run test:node
+        working-directory: fluid-server/wasm-demo
+
+      - name: Run browser demo validation
+        run: npm run test:browser
+        working-directory: fluid-server/wasm-demo

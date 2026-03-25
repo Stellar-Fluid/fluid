@@ -38,8 +38,15 @@ export async function feeBumpHandler(
         new AppError(
           `Validation failed: ${JSON.stringify(parsedBody.error.format())}`,
           400,
-          "INVALID_XDR"
-        )
+          "INVALID_XDR",
+        ),
+      );
+    }
+
+    const body: FeeBumpRequest = req.body;
+    if (!body.xdr) {
+      return next(
+        new AppError("Missing 'xdr' field in request body", 400, "INVALID_XDR")
       );
     }
 
@@ -58,17 +65,20 @@ export async function feeBumpHandler(
     } catch (error: any) {
       console.error("Failed to parse XDR:", error.message);
       return next(
-        new AppError(`Invalid XDR: ${error.message}`, 400, "INVALID_XDR")
+        new AppError(`Invalid XDR: ${error.message}`, 400, "INVALID_XDR"),
       );
     }
 
-    if (!innerTransaction.signatures || innerTransaction.signatures.length === 0) {
+    if (
+      !innerTransaction.signatures ||
+      innerTransaction.signatures.length === 0
+    ) {
       return next(
         new AppError(
           "Inner transaction must be signed before fee-bumping",
           400,
-          "UNSIGNED_TRANSACTION"
-        )
+          "UNSIGNED_TRANSACTION",
+        ),
       );
     }
 
@@ -77,8 +87,8 @@ export async function feeBumpHandler(
         new AppError(
           "Cannot fee-bump an already fee-bumped transaction",
           400,
-          "ALREADY_FEE_BUMPED"
-        )
+          "ALREADY_FEE_BUMPED",
+        ),
       );
     }
 
@@ -106,7 +116,7 @@ export async function feeBumpHandler(
       res.status(403).json({
         error: "Daily fee sponsorship quota exceeded",
         currentSpendStroops: quotaCheck.currentSpendStroops,
-        attemptedFeeStroops: feeAmount,
+        attemptedFeeStroops: baseFeeAmount,
         dailyQuotaStroops: quotaCheck.dailyQuotaStroops,
       });
       return;

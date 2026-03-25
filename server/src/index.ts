@@ -2,6 +2,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express, { NextFunction, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
+
 import { loadConfig } from "./config";
 import { AppError } from "./errors/AppError";
 import { feeBumpHandler } from "./handlers/feeBump";
@@ -17,6 +18,9 @@ import {
   getLedgerMonitor,
   initializeLedgerMonitor,
 } from "./workers/ledgerMonitor";
+
+import { initializeLedgerMonitor } from "./workers/ledgerMonitor";
+import { transactionStore } from "./workers/transactionStore";
 
 dotenv.config();
 
@@ -42,7 +46,7 @@ const limiter = rateLimit({
 const corsOptions = {
   origin: (
     origin: string | undefined,
-    callback: (err: Error | null, allow?: boolean) => void
+    callback: (err: Error | null, allow?: boolean) => void,
   ) => {
     if (!origin) {
       callback(null, false);
@@ -92,6 +96,7 @@ app.get("/health", (req: Request, res: Response) => {
   });
 });
 
+// Fee bump endpoint
 app.post(
   "/fee-bump",
   apiKeyMiddleware,
@@ -104,13 +109,17 @@ app.post(
 
 app.post("/test/add-transaction", (req: Request, res: Response) => {
   const { hash, status = "pending" } = req.body;
+
   if (!hash) {
     res.status(400).json({ error: "Transaction hash is required" });
     return;
   }
 
   transactionStore.addTransaction(hash, status);
-  res.json({ message: `Transaction ${hash} added with status ${status}` });
+
+  res.json({
+    message: `Transaction ${hash} added with status ${status}`,
+  });
 });
 
 app.get("/test/transactions", (req: Request, res: Response) => {
@@ -136,6 +145,7 @@ if (config.horizonUrls.length > 0) {
   console.log("No Horizon URLs configured - ledger monitor disabled");
 }
 
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`Fluid server running on http://0.0.0.0:${PORT}`);
   console.log(`Fee payers loaded: ${config.feePayerAccounts.length}`);

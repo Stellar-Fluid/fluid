@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fluid WASM Signing Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, #f4f0db 0%, rgba(244, 240, 219, 0) 40%),
+          linear-gradient(135deg, #eff4eb 0%, #d8e4d1 100%);
+        color: #14331f;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      main {
+        width: min(840px, 100%);
+        background: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(20, 51, 31, 0.15);
+        border-radius: 24px;
+        box-shadow: 0 24px 80px rgba(20, 51, 31, 0.12);
+        overflow: hidden;
+      }
+
+      header {
+        padding: 24px 28px 12px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+        font-size: clamp(2rem, 4vw, 3rem);
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.6;
+      }
+
+      .status {
+        padding: 0 28px 20px;
+        font-weight: 600;
+      }
+
+      .status[data-status="running"] {
+        color: #8a5a00;
+      }
+
+      .status[data-status="success"] {
+        color: #176b37;
+      }
+
+      .status[data-status="error"] {
+        color: #8b2020;
+      }
+
+      pre {
+        margin: 0;
+        padding: 24px 28px 28px;
+        background: #0d1b12;
+        color: #d4ffe0;
+        font-family: "IBM Plex Mono", "Cascadia Code", monospace;
+        font-size: 0.95rem;
+        overflow-x: auto;
+        min-height: 260px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Fluid WASM Signing Demo</h1>
+        <p>
+          This page builds an unsigned Stellar payment transaction in JavaScript,
+          signs it with the Rust WASM module, and compares the result against the
+          official JavaScript SDK.
+        </p>
+      </header>
+      <div class="status" data-status="running" id="status">
+        Running WASM signing check...
+      </div>
+      <pre id="console-output">Browser console mirror initialized.</pre>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
