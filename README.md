@@ -2,7 +2,7 @@
 
 Fluid enables gasless Stellar transactions by abstracting network fees. **The core purpose is to allow applications to let users pay with the token they're spending (e.g., USDC) without the application needing to worry about gas abstraction or requiring users to hold XLM for fees.**
 
-Users sign their transactions locally, and Fluid wraps them in fee-bump transactions to pay network fees in XLM on their behalf.
+Users sign their transactions locally, and Fluid wraps them in fee-bump transactions to pay network fees in XLM on their behalf. Alongside the existing TypeScript services, the repo now includes a Rust `fluid-server` crate that exposes a WASM signing module for Stellar transaction envelopes.
 
 ## Purpose
 
@@ -42,7 +42,15 @@ cd ../client
 npm install
 ```
 
-4. Configure the server:
+4. Set up the admin dashboard (optional):
+```bash
+cd ../admin-dashboard
+npm install
+cp .env.local.example .env.local
+# Configure authentication variables in .env.local
+```
+
+5. Configure the server:
 ```bash
 cd ../server
 cp .env.example .env
@@ -50,13 +58,39 @@ cp .env.example .env
 
 Edit `.env` and set your `FLUID_FEE_PAYER_SECRET`.
 
-5. Build and run the server:
+6. Build and run the server:
 ```bash
 npm run build
 npm start
 ```
 
 The server will start on `http://localhost:3000`
+
+7. Start the admin dashboard (optional):
+```bash
+cd ../admin-dashboard
+npm run dev
+```
+
+The admin dashboard will be available at `http://localhost:3001`
+
+## Admin Dashboard
+
+Fluid includes a secure admin dashboard for monitoring and managing fee sponsorship operations:
+
+### Features
+- **Secure Authentication**: NextAuth.js with bcrypt password hashing
+- **Protected Routes**: All admin areas require authentication
+- **Session Management**: 8-hour JWT sessions with secure cookies
+- **Modern UI**: Built with Next.js 14, TypeScript, and Tailwind CSS
+
+### Access
+- Login URL: `http://localhost:3001/login`
+- Admin Dashboard: `http://localhost:3001/admin/dashboard`
+- All `/admin/*` routes are protected and redirect to login if unauthenticated
+
+### Authentication Setup
+See `admin-dashboard/README.md` for detailed authentication configuration including environment variables and security setup.
 
 ## Project Structure
 
@@ -74,7 +108,39 @@ fluid/
 │   ├── src/
 │   │   └── index.ts
 │   └── package.json
+├── admin-dashboard/     Admin dashboard (Next.js)
+│   ├── app/
+│   │   ├── admin/
+│   │   ├── login/
+│   │   └── api/auth/
+│   ├── components/
+│   ├── auth.ts
+│   ├── middleware.ts
+│   └── README.md
 └── README.md
+```
+
+## Rust WASM Signer
+
+The `fluid-server/` crate exposes a `signTransactionXdr` WASM entrypoint plus helper exports for:
+
+- deriving a Stellar public key from a secret seed
+- hashing unsigned transaction envelopes with a network passphrase
+- appending an ed25519 signature to a transaction envelope
+
+The demo app in `fluid-server/wasm-demo/` builds a Stellar transaction in JavaScript, signs it through the Rust WASM module, and compares the result against the official Stellar JavaScript SDK.
+
+### Rust/WASM Development
+
+```bash
+cd fluid-server
+cargo test --lib
+wasm-pack build --release --target web --out-dir pkg/web
+wasm-pack build --release --target nodejs --out-dir pkg/node
+cd wasm-demo
+npm ci
+npm run test:node
+npm run test:browser
 ```
 
 ## Server Configuration
@@ -180,6 +246,7 @@ const result = await server.submitTransaction(feeBumpTx);
 - Open Hosting: Anyone can run their own Fluid instance
 - TypeScript: Type-safe code for both server and client
 - Node.js: Easy to deploy and maintain
+- Rust/WASM: Optional signing pipeline for browser or Node runtimes
 
 ## Security Notes
 

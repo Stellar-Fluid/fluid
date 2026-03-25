@@ -1,13 +1,20 @@
-import { PrismaClient } from "@prisma/client";
+// This project includes Prisma as an optional dependency, but the generated
+// client may not exist in all environments unless `prisma generate` was run.
+// Use `require` to avoid hard type dependencies during compilation.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PrismaClient } = require("@prisma/client") as { PrismaClient: any };
+
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: any | undefined;
 };
 
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL,
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

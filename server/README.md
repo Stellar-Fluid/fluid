@@ -32,7 +32,9 @@ npm run dev
 See `.env.example` for all configuration options.
 
 Required:
-- `FLUID_FEE_PAYER_SECRET` - Your Stellar secret key for paying fees
+- Fee payer key material:
+  - Development-only fallback: `FLUID_FEE_PAYER_SECRET` (comma-separated Stellar secrets)
+  - Production (recommended): HashiCorp Vault KV (see `docs/vault.md`)
 
 Optional:
 - `FLUID_BASE_FEE` - Base fee in stroops (default: 100)
@@ -42,6 +44,7 @@ Optional:
 - `PORT` - Server port (default: 3000)
 - `FLUID_RATE_LIMIT_WINDOW_MS` - Rate limit window in milliseconds (default: 60000)
 - `FLUID_RATE_LIMIT_MAX` - Max requests per window per IP (default: 5)
+  - CORS: `FLUID_ALLOWED_ORIGINS` (comma-separated; default: `*`)
 
 Mock API keys for local development:
 - `fluid-free-demo-key` - Free tier, 2 requests per minute
