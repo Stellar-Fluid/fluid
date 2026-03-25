@@ -1,12 +1,7 @@
 import { Queue, Worker, Job } from "bullmq";
 import Redis from "ioredis";
 import axios from "axios";
-
-// Prisma client generation may not run in all environments; use a dynamic require
-// to avoid compile-time type dependency on generated client types.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { PrismaClient } = require("@prisma/client") as { PrismaClient: any };
-const prisma = new PrismaClient();
+import prisma from "../utils/db";
 const connection = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
 export const webhookQueue = new Queue("webhook-delivery", {
@@ -26,6 +21,38 @@ interface WebhookJobData {
 }
 
 export class WebhookService {
+  async dispatch(
+    tenantId: string,
+    hash: string,
+    status: "success" | "failed"
+  ): Promise<void> {
+    try {
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+      if (!tenant) {
+        console.warn(`[Webhook] Tenant not found: ${tenantId}`);
+        return;
+      }
+
+      if (!tenant.webhookUrl) {
+        return;
+      }
+
+      const response = await fetch(tenant.webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hash, status }),
+      });
+
+      if (!response.ok) {
+        console.error(
+          `[Webhook] non-2xx response while dispatching webhook: ${response.status}`
+        );
+      }
+    } catch (error: any) {
+      console.error(`[Webhook] Network error while dispatching webhook: ${error.message}`);
+    }
+  }
+
   static async queueWebhook(tenantId: string, url: string, payload: any) {
     const delivery = await prisma.webhookDelivery.create({
       data: {

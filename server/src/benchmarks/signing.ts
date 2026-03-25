@@ -127,7 +127,7 @@ async function verifyParity(secret: string): Promise<void> {
   );
 
   signTransactionWithNode(nodeTransaction, secret);
-  await signTransaction(rustTransaction, secret);
+  await signTransaction(rustTransaction, secret, NETWORK_PASSPHRASE);
 
   const nodeSignature = Buffer.from(
     nodeTransaction.signatures[0]?.signature() ?? []
@@ -160,7 +160,7 @@ async function main(): Promise<void> {
     signTransactionWithNode(transaction, feePayerSecret);
   });
   const rustResult = await benchmark("Rust ed25519-dalek", async (transaction) => {
-    await signTransaction(transaction, feePayerSecret);
+    await signTransaction(transaction, feePayerSecret, NETWORK_PASSPHRASE);
   });
 
   const report = [

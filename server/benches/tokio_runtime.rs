@@ -1,7 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use napi::bindgen_prelude::Buffer;
-use std::sync::Arc;
-use std::time::Duration;
 use tokio::runtime::Runtime;
 
 // Import our library
@@ -76,7 +74,7 @@ fn bench_signing_high_concurrency(c: &mut Criterion) {
                     }
                     
                     for handle in handles {
-                        black_box(handle.await.unwrap());
+                        let _ = black_box(handle.await.unwrap());
                     }
                 })
             })

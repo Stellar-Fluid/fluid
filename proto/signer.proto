@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package signer;
+
+service SignerService {
+  rpc Sign(SignRequest) returns (SignResponse);
+}
+
+message SignRequest {
+  string xdr = 1;
+  string secret_key = 2;
+  string network_passphrase = 3;
+}
+
+message SignResponse {
+  string signed_xdr = 1;
+  string signer_public_key = 2;
+  string transaction_hash_hex = 3;
+  uint32 signature_count = 4;
+}

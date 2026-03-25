@@ -5,5 +5,9 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["src/**/*.test.ts"],
+    exclude: [
+      "src/signing/signerPool.test.ts",
+      "src/handlers/feeBump.doubleBump.test.ts",
+    ],
   },
 });

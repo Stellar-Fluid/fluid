@@ -538,7 +538,10 @@ fn decode_secret(secret: &str) -> Result<([u8; 32], String), AppError> {
 
     let signing_key = ed25519_dalek::SigningKey::from_bytes(&secret.0);
     let public_key_bytes = signing_key.verifying_key().to_bytes();
-    let public_key = Strkey::PublicKeyEd25519(ed25519::PublicKey(public_key_bytes)).to_string();
+    let public_key = format!(
+        "{}",
+        Strkey::PublicKeyEd25519(ed25519::PublicKey(public_key_bytes))
+    );
 
     Ok((public_key_bytes, public_key))
 }

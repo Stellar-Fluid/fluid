@@ -1,18 +1,21 @@
 import { Config } from "../config";
 import { HorizonFailoverClient } from "../horizon/failoverClient";
+import { WebhookService } from "../services/webhook";
 import { TransactionRecord, transactionStore } from "./transactionStore";
 
 export class LedgerMonitor {
   private readonly client: HorizonFailoverClient;
+  private readonly webhookService: WebhookService;
   private pollInterval: NodeJS.Timeout | null = null;
   private readonly POLL_INTERVAL_MS = 30000;
 
-  constructor(config: Config) {
+  constructor(config: Config, webhookService: WebhookService) {
     if (config.horizonUrls.length === 0) {
       throw new Error("At least one Horizon URL is required for ledger monitoring");
     }
 
     this.client = HorizonFailoverClient.fromConfig(config);
+    this.webhookService = webhookService;
   }
 
   start(): void {

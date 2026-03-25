@@ -12,6 +12,9 @@ use stellar_xdr::curr::{
 };
 use wasm_bindgen::prelude::*;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod grpc;
+
 const MAX_SIGNATURES: usize = 20;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,7 +68,7 @@ impl WasmSigningResult {
 }
 
 #[derive(Debug)]
-enum SigningError {
+pub enum SigningError {
     InvalidSecretKey(String),
     InvalidEnvelope(String),
     UnsupportedEnvelope(String),
@@ -122,7 +125,7 @@ pub fn sign_transaction_xdr_internal(
     unsigned_xdr: &str,
     secret_key: &str,
     network_passphrase: &str,
-) -> Result<SigningResult, Box<dyn std::error::Error>> {
+) -> Result<SigningResult, SigningError> {
     let signer = signer_context(secret_key)?;
     let mut envelope = parse_transaction_envelope(unsigned_xdr)?;
     let tx_hash = transaction_hash(&envelope, network_passphrase)?;
@@ -136,6 +139,7 @@ pub fn sign_transaction_xdr_internal(
     })
 }
 
+#[derive(Debug)]
 struct SignerContext {
     signing_key: SigningKey,
     public_key: String,

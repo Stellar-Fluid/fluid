@@ -16,7 +16,10 @@ use stellar_xdr::curr::{
 };
 
 fn build_secret(seed_byte: u8) -> String {
-    Strkey::PrivateKeyEd25519(ed25519::PrivateKey([seed_byte; 32])).to_string()
+    format!(
+        "{}",
+        Strkey::PrivateKeyEd25519(ed25519::PrivateKey([seed_byte; 32]))
+    )
 }
 
 fn build_signed_transaction_xdr() -> String {
@@ -67,33 +70,79 @@ fn build_signed_transaction_xdr() -> String {
 }
 
 fn node_process_count_in_tree(root_pid: u32) -> usize {
-    let output = Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-Command",
-            &format!(
-                "$all = Get-CimInstance Win32_Process; \
-                 $queue = @({root_pid}); \
-                 $desc = @(); \
-                 while ($queue.Count -gt 0) {{ \
-                   $next = @(); \
-                   foreach ($pid in $queue) {{ \
-                     $children = $all | Where-Object {{ $_.ParentProcessId -eq $pid }}; \
-                     $desc += $children; \
-                     $next += ($children | Select-Object -ExpandProperty ProcessId); \
-                   }} \
-                   $queue = $next; \
-                 }} \
-                 ($desc | Where-Object {{ $_.Name -like 'node*' }} | Measure-Object).Count"
-            ),
-        ])
-        .output()
-        .expect("powershell should run");
+    #[cfg(windows)]
+    {
+        let output = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                &format!(
+                    "$all = Get-CimInstance Win32_Process; \
+                     $queue = @({root_pid}); \
+                     $desc = @(); \
+                     while ($queue.Count -gt 0) {{ \
+                       $next = @(); \
+                       foreach ($pid in $queue) {{ \
+                         $children = $all | Where-Object {{ $_.ParentProcessId -eq $pid }}; \
+                         $desc += $children; \
+                         $next += ($children | Select-Object -ExpandProperty ProcessId); \
+                       }} \
+                       $queue = $next; \
+                     }} \
+                     ($desc | Where-Object {{ $_.Name -like 'node*' }} | Measure-Object).Count"
+                ),
+            ])
+            .output()
+            .expect("powershell should run");
 
-    String::from_utf8_lossy(&output.stdout)
-        .trim()
-        .parse()
-        .unwrap_or(0)
+        return String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .parse()
+            .unwrap_or(0);
+    }
+
+    #[cfg(not(windows))]
+    {
+        use std::collections::{HashMap, VecDeque};
+
+        let output = Command::new("ps")
+            .args(["-eo", "pid=,ppid=,comm="])
+            .output()
+            .expect("ps should run");
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let mut children: HashMap<u32, Vec<(u32, String)>> = HashMap::new();
+
+        for line in stdout.lines() {
+            let mut parts = line.split_whitespace();
+            let pid = match parts.next().and_then(|p| p.parse::<u32>().ok()) {
+                Some(pid) => pid,
+                None => continue,
+            };
+            let ppid = match parts.next().and_then(|p| p.parse::<u32>().ok()) {
+                Some(ppid) => ppid,
+                None => continue,
+            };
+            let comm = parts.next().unwrap_or_default().to_string();
+            children.entry(ppid).or_default().push((pid, comm));
+        }
+
+        let mut queue = VecDeque::from([root_pid]);
+        let mut node_count = 0usize;
+
+        while let Some(parent) = queue.pop_front() {
+            if let Some(entries) = children.get(&parent) {
+                for (pid, comm) in entries {
+                    if comm.starts_with("node") {
+                        node_count += 1;
+                    }
+                    queue.push_back(*pid);
+                }
+            }
+        }
+
+        node_count
+    }
 }
 
 #[tokio::test]

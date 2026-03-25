@@ -61,12 +61,10 @@ fn initialize_optimized_tokio_runtime() {
                 {
                     if let Ok(cpu_id) = std::env::var("FLUID_TOKIO_CPU_PINNING") {
                         if let Ok(core_id) = cpu_id.parse::<usize>() {
-                            if
-                                let Err(e) = core_affinity::set_for_current(core_affinity::CoreId {
-                                    id: core_id,
-                                })
-                            {
-                                eprintln!("Failed to set CPU affinity: {}", e);
+                            if !core_affinity::set_for_current(core_affinity::CoreId {
+                                id: core_id,
+                            }) {
+                                eprintln!("Failed to set CPU affinity for core {}", core_id);
                             }
                         }
                     }

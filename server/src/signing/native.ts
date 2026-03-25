@@ -18,4 +18,23 @@ interface NativeSignerBinding {
 
 const nativeModulePath = join(__dirname, "../../fluid_signer.node");
 
-export const nativeSigner = require(nativeModulePath) as NativeSignerBinding;
+function unavailableNativeSigner(reason: string): NativeSignerBinding {
+  const fail = async (): Promise<never> => {
+    throw new Error(`Native signer is unavailable: ${reason}`);
+  };
+
+  return {
+    signPayload: fail,
+    signPayloadFromVault: fail,
+    preflightSoroban: fail,
+  };
+}
+
+let loadedNativeSigner: NativeSignerBinding;
+try {
+  loadedNativeSigner = require(nativeModulePath) as NativeSignerBinding;
+} catch (error: any) {
+  loadedNativeSigner = unavailableNativeSigner(error?.message ?? "unknown load error");
+}
+
+export const nativeSigner = loadedNativeSigner;

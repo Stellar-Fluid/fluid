@@ -40,8 +40,8 @@ export async function feeBumpHandler(
         new AppError(
           `Validation failed: ${JSON.stringify(parsedBody.error.format())}`,
           400,
-          "INVALID_XDR",
-        ),
+          "INVALID_XDR"
+        )
       );
     }
 
@@ -64,7 +64,6 @@ export async function feeBumpHandler(
         );
       }
 
-      // Preflight simulation for Soroban transactions
       const isSoroban = innerTransaction.operations.some(
         (op: any) =>
           ["invokeHostFunction", "extendFootprintTtl", "restoreFootprint"].includes(op.type)
@@ -76,7 +75,7 @@ export async function feeBumpHandler(
             new AppError(
               "Soroban transaction requires STELLAR_RPC_URL for preflight simulation",
               400,
-              "MISSING_RPC_URL"
+              "INVALID_XDR"
             )
           );
         }
@@ -87,22 +86,22 @@ export async function feeBumpHandler(
             config.stellarRpcUrl,
             body.xdr
           );
-          
-          // Use the updated XDR containing returned footprints and corrected resource fees
+
           innerTransaction = StellarSdk.TransactionBuilder.fromXDR(
             updatedXdr,
             config.networkPassphrase
           ) as any;
-          
-          console.log("[soroban] preflight simulation successful, transaction updated with correct resource fees and footprints");
+
+          console.log(
+            "[soroban] preflight simulation successful, transaction updated with correct resource fees and footprints"
+          );
         } catch (simError: any) {
           console.error("[soroban] simulation failed:", simError.message);
-          // Handle simulation failures as suggested: rejecting the bump request
           return next(
             new AppError(
               `Soroban simulation failed: ${simError.message}. The transaction would fail on-chain or out of gas.`,
               400,
-              "SIMULATION_FAILED"
+              "INVALID_XDR"
             )
           );
         }
@@ -119,6 +118,9 @@ export async function feeBumpHandler(
       }
 
       if ("innerTransaction" in innerTransaction) {
+        console.warn(
+          "Rejected fee-bump request: Cannot fee-bump an already fee-bumped transaction"
+        );
         return next(
           new AppError(
             "Cannot fee-bump an already fee-bumped transaction",
@@ -140,19 +142,11 @@ export async function feeBumpHandler(
       }
 
       const tenant = syncTenantFromApiKey(apiKeyConfig);
-      const operationCount = innerTransaction.operations?.length || 0;
-      const innerFee = parseInt(innerTransaction.fee || "0", 10);
-      
-      const calculatedBaseFee = calculateFeeBumpFee(
-        operationCount,
+      const feeAmount = calculateFeeBumpFee(
+        innerTransaction,
         config.baseFee,
         config.feeMultiplier
       );
-
-      // Fee-bump fee must be higher than the inner transaction fee.
-      // For Soroban, the inner transaction fee includes resource fees returned by simulation.
-      const feeAmount = Math.max(calculatedBaseFee, innerFee + config.baseFee);
-      
       const quotaCheck = checkTenantDailyQuota(tenant, feeAmount);
 
       if (!quotaCheck.allowed) {
@@ -165,57 +159,12 @@ export async function feeBumpHandler(
         return;
       }
 
-      console.log("Fee calculation:", {
-        operationCount,
-        baseFee: config.baseFee,
-        multiplier: config.feeMultiplier,
-        finalFee: feeAmount,
-      });
-
       const feeBumpTx = StellarSdk.TransactionBuilder.buildFeeBumpTransaction(
         feePayerAccount.keypair,
         feeAmount.toString(),
         innerTransaction,
         config.networkPassphrase
       );
-
-
-    //const baseFeeAmount = Math.floor(config.baseFee * config.feeMultiplier);
-
-    // Use extracted utility for correct fee calculation
-    const apiKeyConfig = res.locals.apiKey as ApiKeyConfig | undefined;
-    if (!apiKeyConfig) {
-      res.status(500).json({
-        error: "Missing tenant context for fee sponsorship",
-      });
-      return;
-    }
-    // Extract operation count safely
-    
-    const feeAmount = calculateFeeBumpFee(
-  innerTransaction,
-  config.baseFee,
-  config.feeMultiplier
-);
-
-    console.log("Fee calculation:", {
-      operationCount,
-      baseFee: config.baseFee,
-      multiplier: config.feeMultiplier,
-      finalFee: feeAmount,
-    });
-
-    const tenant = syncTenantFromApiKey(apiKeyConfig);
-    const quotaCheck = checkTenantDailyQuota(tenant, feeAmount);
-    if (!quotaCheck.allowed) {
-      res.status(403).json({
-        error: "Daily fee sponsorship quota exceeded",
-        currentSpendStroops: quotaCheck.currentSpendStroops,
-        attemptedFeeStroops: feeAmount,
-        dailyQuotaStroops: quotaCheck.dailyQuotaStroops,
-      });
-      return;
-    }
 
       feeBumpTx.sign(feePayerAccount.keypair);
       recordSponsoredTransaction(tenant.id, feeAmount);
@@ -224,7 +173,6 @@ export async function feeBumpHandler(
       console.log(
         `Fee-bump transaction created | fee_payer: ${feePayerAccount.publicKey}`
       );
-
 
       if (!body.submit) {
         const response: FeeBumpResponse = {
@@ -259,7 +207,11 @@ export async function feeBumpHandler(
 
       try {
         const submission = await horizonClient.submitTransaction(feeBumpTx);
-        transactionStore.addTransaction(submission.result.hash, "submitted");
+        transactionStore.addTransaction(
+          submission.result.hash,
+          tenant.id,
+          "submitted"
+        );
 
         const response: FeeBumpResponse = {
           xdr: feeBumpXdr,

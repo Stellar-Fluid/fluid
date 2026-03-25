@@ -3,8 +3,6 @@ mod error;
 mod state;
 mod stellar;
 mod xdr;
-mod sequence_manager;
-
 use std::net::SocketAddr;
 
 use axum::{
@@ -26,6 +24,8 @@ use state::{
 };
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 use tracing::{error, info};
+
+use fluid_server::grpc::serve_grpc;
 
 #[derive(Serialize)]
 struct HealthResponse {
@@ -114,9 +114,17 @@ async fn run() -> Result<(), AppError> {
         .with_state(state)
         .layer(build_cors_layer(&allowed_origins));
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    info!("Fluid server (Rust) listening on {addr}");
-    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|error| {
+    let http_addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let grpc_port: u16 = std::env::var("GRPC_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(50051);
+    let grpc_addr = SocketAddr::from(([0, 0, 0, 0], grpc_port));
+
+    info!("Starting Fluid Rust services");
+    info!("Fluid server (Rust) listening on {http_addr}");
+
+    let listener = tokio::net::TcpListener::bind(http_addr).await.map_err(|error| {
         AppError::new(
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             "INTERNAL_ERROR",
@@ -124,15 +132,29 @@ async fn run() -> Result<(), AppError> {
         )
     })?;
 
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
-        .await
-        .map_err(|error| {
-            AppError::new(
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "INTERNAL_ERROR",
-                format!("Rust server exited unexpectedly: {error}"),
-            )
-        })
+    tokio::try_join!(
+        async {
+            axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+                .await
+                .map_err(|error| {
+                    AppError::new(
+                        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        "INTERNAL_ERROR",
+                        format!("Rust server exited unexpectedly: {error}"),
+                    )
+                })
+        },
+        async {
+            serve_grpc(grpc_addr).await.map_err(|error| {
+                AppError::new(
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    "INTERNAL_ERROR",
+                    format!("gRPC server exited unexpectedly: {error}"),
+                )
+            })
+        }
+    )
+    .map(|_| ())
 }
 
 fn build_cors_layer(allowed_origins: &[String]) -> CorsLayer {
@@ -178,17 +200,11 @@ async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
 async fn add_transaction(
     State(state): State<AppState>,
     Json(request): Json<AddTransactionRequest>,
-) -> Result<Json<AddTransactionResponse>, AppError> {
-    if request.hash.trim().is_empty() {
-        return Err(AppError::new(
-            axum::http::StatusCode::BAD_REQUEST,
-            "INVALID_XDR",
-            "Transaction hash is required",
-        ));
-    }
-
+)
+-> Result<Json<AddTransactionResponse>, AppError> {
     let status = request.status.unwrap_or_else(|| "pending".to_string());
     let now = iso_now();
+
     state.transaction_store.lock().await.insert(
         request.hash.clone(),
         TransactionRecord {
@@ -212,12 +228,13 @@ async fn list_transactions(State(state): State<AppState>) -> Json<TransactionsRe
         .values()
         .cloned()
         .collect();
+
     Json(TransactionsResponse { transactions })
 }
 
 async fn fee_bump(
-    State(state): State<AppState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    State(state): State<AppState>,
     headers: HeaderMap,
     Json(body): Json<FeeBumpRequest>,
 ) -> Result<Response, AppError> {
