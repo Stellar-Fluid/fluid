@@ -162,6 +162,8 @@ export class FluidClient {
   }
 }
 
+export { FluidQueue } from "./queue";
+export type { QueuedTransaction, FluidQueueCallbacks } from "./queue";
 export {
   buildFeeBumpTransaction,
   createHorizonServer,

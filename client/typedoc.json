@@ -1,0 +1,11 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "name": "Fluid SDK",
+  "readme": "README.md",
+  "includeVersion": true,
+  "searchInComments": true,
+  "navigationLinks": {
+    "GitHub": "https://github.com/Stellar-Fluid/fluid"
+  }
+}

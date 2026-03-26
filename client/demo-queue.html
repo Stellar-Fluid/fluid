@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FluidQueue Offline Demo</title>
+  <style>
+    body { font-family: monospace; background: #0f0f0f; color: #00ff88; padding: 20px; }
+    button { background: #00ff88; color: #0f0f0f; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; font-size: 14px; font-weight: bold; border-radius: 4px; }
+    button:hover { opacity: 0.8; }
+    #log { background: #1a1a1a; padding: 15px; margin-top: 20px; border-radius: 8px; min-height: 200px; white-space: pre-wrap; font-size: 13px; }
+    #status { font-size: 18px; margin: 10px 0; }
+    .offline { color: #ff4444; }
+    .online { color: #00ff88; }
+  </style>
+</head>
+<body>
+  <h2>⚡ FluidQueue — Offline Mode Demo</h2>
+  <div id="status">🟢 Status: <span class="online">ONLINE</span></div>
+  <div>Queue size: <span id="qsize">0</span></div>
+
+  <br/>
+  <button onclick="queueTransaction()">➕ Queue Transaction</button>
+  <button onclick="goOffline()">🔴 Go Offline</button>
+  <button onclick="goOnline()">🟢 Go Online</button>
+  <button onclick="clearLog()">🗑️ Clear Log</button>
+
+  <div id="log">Ready. Click "Go Offline" then queue some transactions...\n</div>
+
+  <script>
+    let isOffline = false;
+    let queue = JSON.parse(localStorage.getItem('fluid_queue') || '[]');
+    const log = document.getElementById('log');
+    const statusEl = document.getElementById('status');
+    const qsizeEl = document.getElementById('qsize');
+
+    function addLog(msg) {
+      const time = new Date().toLocaleTimeString();
+      log.textContent += `[${time}] ${msg}\n`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function updateQueueSize() {
+      queue = JSON.parse(localStorage.getItem('fluid_queue') || '[]');
+      qsizeEl.textContent = queue.length;
+    }
+
+    function goOffline() {
+      isOffline = true;
+      statusEl.innerHTML = '🔴 Status: <span class="offline">OFFLINE</span>';
+      addLog('❌ Gone offline — transactions will be queued.');
+      updateQueueSize();
+    }
+
+    function goOnline() {
+      isOffline = false;
+      statusEl.innerHTML = '🟢 Status: <span class="online">ONLINE</span>';
+      addLog('✅ Back online — flushing queue...');
+      flushQueue();
+    }
+
+    function queueTransaction() {
+      const id = `fluid_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      const item = {
+        id,
+        xdr: `FAKE_XDR_${Math.random().toString(36).substr(2, 12).toUpperCase()}`,
+        submit: false,
+        queuedAt: Date.now(),
+        retryCount: 0
+      };
+      queue.push(item);
+      localStorage.setItem('fluid_queue', JSON.stringify(queue));
+      updateQueueSize();
+
+      if (isOffline) {
+        addLog(`📦 Queued (offline): ${id}`);
+      } else {
+        addLog(`📦 Queued: ${id} — processing immediately...`);
+        flushQueue();
+      }
+    }
+
+    async function flushQueue() {
+      queue = JSON.parse(localStorage.getItem('fluid_queue') || '[]');
+      if (queue.length === 0) {
+        addLog('✅ Queue is empty, nothing to flush.');
+        return;
+      }
+
+      addLog(`🔄 Flushing ${queue.length} transaction(s)...`);
+
+      for (const item of [...queue]) {
+        await new Promise(r => setTimeout(r, 800));
+        addLog(`✅ Processed: ${item.id}`);
+        queue = queue.filter(i => i.id !== item.id);
+        localStorage.setItem('fluid_queue', JSON.stringify(queue));
+        updateQueueSize();
+      }
+
+      addLog('🎉 Queue cleared! All transactions sent.');
+      updateQueueSize();
+    }
+
+    function clearLog() {
+      log.textContent = '';
+      localStorage.removeItem('fluid_queue');
+      queue = [];
+      updateQueueSize();
+      addLog('Log and queue cleared.');
+    }
+
+    updateQueueSize();
+  </script>
+</body>
+</html>
