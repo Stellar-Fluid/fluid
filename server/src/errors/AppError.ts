@@ -10,6 +10,7 @@ export type ErrorCode =
   | "PAYLOAD_TOO_LARGE"
   | "TOO_MANY_OPERATIONS"
   | "NETWORK_MISMATCH"
+  | "SLIPPAGE_TOO_HIGH";
   | "SETTLEMENT_VERIFICATION_FAILED";
 
 export class AppError extends Error {

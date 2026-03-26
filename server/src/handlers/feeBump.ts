@@ -8,6 +8,7 @@ import { recordSponsoredTransaction } from "../models/transactionLedger";
 import { FeeBumpRequest, FeeBumpSchema } from "../schemas/feeBump";
 import { checkTenantDailyQuota } from "../services/quota";
 import { calculateFeeBumpFee } from "../utils/feeCalculator";
+import { MockPriceOracle, validateSlippage } from "../utils/priceOracle";
 import { transactionStore } from "../workers/transactionStore";
 
 interface FeeBumpResponse {
@@ -137,6 +138,49 @@ export async function feeBumpHandler(
         dailyQuotaStroops: quotaCheck.dailyQuotaStroops,
       });
       return;
+    }
+
+    // Slippage protection for token payments
+    if (body.token && body.maxSlippage !== undefined) {
+      const priceOracle = new MockPriceOracle();
+      const requestTime = Date.now();
+
+      try {
+        const currentPrice = await priceOracle.getCurrentPrice(body.token);
+        const historicalPrice = await priceOracle.getHistoricalPrice(
+          body.token,
+          requestTime - 120000,
+        ); // 2 minutes ago
+
+        const slippageCheck = validateSlippage(
+          historicalPrice,
+          currentPrice,
+          body.maxSlippage,
+        );
+
+        if (!slippageCheck.valid) {
+          return next(
+            new AppError(
+              "Slippage too high: try increasing your fee payment",
+              400,
+              "SLIPPAGE_TOO_HIGH",
+            ),
+          );
+        }
+
+        console.log(
+          `Slippage check passed | token: ${body.token} | slippage: ${slippageCheck.actualSlippage.toFixed()}% | max: ${body.maxSlippage}%`,
+        );
+      } catch (error: any) {
+        console.error("Price oracle error:", error.message);
+        return next(
+          new AppError(
+            `Failed to verify token price: ${error.message}`,
+            500,
+            "INTERNAL_ERROR",
+          ),
+        );
+      }
     }
 
     // Preflight simulation for Soroban transactions

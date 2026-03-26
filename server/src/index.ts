@@ -1,6 +1,8 @@
-import { createLogger, serializeError } from "./utils/logger";
+import cors from "cors";
+import dotenv from "dotenv";
 import express, { NextFunction, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
+import { createLogger, serializeError } from "./utils/logger";
 import redisClient from "./utils/redis";
 import { RedisRateLimitStore } from "./utils/redisRateLimitStore";
 import cors from "cors";
@@ -14,6 +16,9 @@ import {
   revokeApiKeyHandler,
   upsertApiKeyHandler,
 } from "./handlers/adminApiKeys";
+import { feeBumpHandler } from "./handlers/feeBump";
+import { getHorizonFailoverClient } from "./horizon/failoverClient";
+import { apiKeyMiddleware } from "./middleware/apiKeys";
 import {
   addSignerHandler,
   listSignersHandler,
@@ -29,6 +34,8 @@ import {
   initializeLedgerMonitor,
 } from "./workers/ledgerMonitor";
 import { transactionStore } from "./workers/transactionStore";
+
+const logger = createLogger({ component: "server" });
 import { getHorizonFailoverClient } from "./horizon/failoverClient";
 
 dotenv.config();
@@ -254,4 +261,39 @@ async function bootstrap(): Promise<void> {
   });
 }
 
+let balanceMonitor: any = null;
+if (
+  config.horizonUrl &&
+  config.alerting.lowBalanceThresholdXlm !== undefined &&
+  alertService.isEnabled()
+) {
+  try {
+    balanceMonitor = initializeBalanceMonitor(config, alertService);
+    balanceMonitor.start();
+    console.log("Balance monitor worker started");
+  } catch (error) {
+    console.error("Failed to start balance monitor:", error);
+  }
+} else {
+  console.log(
+    "Low balance alerting disabled - missing Horizon URL, threshold, or alert transport",
+  );
+}
+
+app.listen(PORT, () => {
+  logger.info(
+    {
+      fee_payers_loaded: config.feePayerAccounts.length,
+      fee_payer_public_keys: config.feePayerAccounts.map(
+        (account) => account.publicKey,
+      ),
+      horizon_node_count: config.horizonUrls.length,
+      horizon_nodes: config.horizonUrls,
+      horizon_selection_strategy: config.horizonSelectionStrategy,
+      port: PORT,
+      url: `http://0.0.0.0:${PORT}`,
+    },
+    "Fluid server started",
+  );
+});
 void bootstrap();
