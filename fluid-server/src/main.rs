@@ -1,6 +1,4 @@
-mod config;
 mod db;
-mod error;
 mod metrics;
 mod state;
 mod stellar;
@@ -16,9 +14,9 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use config::load_config;
+use fluid_server::config::load_config;
 use db::create_pool;
-use error::AppError;
+use fluid_server::error::AppError;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
 use state::{

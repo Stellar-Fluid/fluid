@@ -12,6 +12,13 @@ use stellar_xdr::curr::{
 };
 use wasm_bindgen::prelude::*;
 
+// These modules are primarily used by the native server binary.
+// We expose them from the library so unit tests + coverage tools can exercise them.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod config;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod error;
+
 const MAX_SIGNATURES: usize = 20;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

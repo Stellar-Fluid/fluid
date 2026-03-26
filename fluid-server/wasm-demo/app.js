@@ -1,5 +1,5 @@
 import init, { signTransactionXdr } from "../pkg/web/fluid_server.js";
-import * as StellarSdk from "https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@11.3.0/+esm";
+import * as StellarSdkModule from "https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@11.3.0/+esm";
 import {
   buildUnsignedTransaction,
   TEST_NETWORK_PASSPHRASE,
@@ -8,6 +8,7 @@ import {
 
 const statusElement = document.getElementById("status");
 const outputElement = document.getElementById("console-output");
+const StellarSdk = StellarSdkModule.default ?? StellarSdkModule;
 
 function mirrorConsole(label, value) {
   const line = typeof value === "string" ? value : JSON.stringify(value, null, 2);
