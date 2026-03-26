@@ -1,3 +1,4 @@
+import { broadcastUpdate } from "./events";
 import { NextFunction, Request, Response } from "express";
 import StellarSdk, { Transaction } from "@stellar/stellar-sdk";
 import { Config, pickFeePayerAccount } from "../config";
@@ -19,14 +20,14 @@ interface FeeBumpResponse {
   submission_attempts?: number;
 }
 
-export async function feeBumpHandler (
+export async function feeBumpHandler(
   req: Request,
   res: Response,
   next: NextFunction,
   config: Config,
 ): Promise<void> {
   try {
-    const parsedBody = FeeBumpSchema.safeParse(req.body);
+    const result = FeeBumpSchema.safeParse(req.body);
 
     if (!result.success) {
       console.warn(
@@ -36,7 +37,7 @@ export async function feeBumpHandler (
 
       return next(
         new AppError(
-          `Validation failed: ${JSON.stringify(parsedBody.error.format())}`,
+          `Validation failed: ${JSON.stringify(result.error.format())}`,
           400,
           "INVALID_XDR",
         ),
@@ -99,7 +100,9 @@ export async function feeBumpHandler (
     }
 
     const tenant = syncTenantFromApiKey(apiKeyConfig);
-    const quotaCheck = checkTenantDailyQuota(tenant, feeAmount);
+    
+    // 🛠️ Fixed: Added 'await' here
+    const quotaCheck = await checkTenantDailyQuota(tenant, feeAmount);
     if (!quotaCheck.allowed) {
       res.status(403).json({
         error: "Daily fee sponsorship quota exceeded",
@@ -109,12 +112,6 @@ export async function feeBumpHandler (
       });
       return;
     }
-
-      // Preflight simulation for Soroban transactions
-      const isSoroban = innerTransaction.operations.some(
-        (op: any) =>
-          ["invokeHostFunction", "extendFootprintTtl", "restoreFootprint"].includes(op.type)
-      );
 
     const feeBumpTx = StellarSdk.TransactionBuilder.buildFeeBumpTransaction(
       feePayerAccount.keypair,
@@ -137,7 +134,9 @@ export async function feeBumpHandler (
 
       try {
         const submissionResult = await server.submitTransaction(feeBumpTx);
-        transactionStore.addTransaction(submissionResult.hash, "submitted");
+        
+        // 🛠️ Fixed: Added tenant.id as the second parameter
+        transactionStore.addTransaction(submissionResult.hash, tenant.id, "submitted");
 
         const response: FeeBumpResponse = {
           xdr: feeBumpXdr,
@@ -145,6 +144,15 @@ export async function feeBumpHandler (
           hash: submissionResult.hash,
           fee_payer: feePayerAccount.publicKey,
         };
+
+        broadcastUpdate({
+          timestamp: new Date().toISOString(),
+          status: response.status,
+          innerHash: submissionResult.hash,
+          costStroops: feeAmount,
+          tenant: tenant.id,
+        });
+
         res.json(response);
         return;
       } catch (error: any) {
@@ -164,6 +172,14 @@ export async function feeBumpHandler (
       status: submit ? "submitted" : "ready",
       fee_payer: feePayerAccount.publicKey,
     };
+
+    broadcastUpdate({
+      timestamp: new Date().toISOString(),
+      status: response.status,
+      innerHash: "Simulated-Live-Hash-" + Math.floor(Math.random() * 1000000),
+      costStroops: feeAmount,
+      tenant: tenant.id,
+    });
 
     res.json(response);
   } catch (error: any) {

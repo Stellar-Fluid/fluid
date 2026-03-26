@@ -7,40 +7,44 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model Tenant {
-  id        String    @id @default(uuid())
-  name      String
-  apiKeys   ApiKey[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id                String            @id @default(uuid())
+  name              String
+  apiKeys           ApiKey[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  webhookDeliveries WebhookDelivery[]
 }
 
 model ApiKey {
-  id        String   @id @default(uuid())
-  key       String   @unique
+  id        String            @id @default(uuid())
+  key       String            @unique
   prefix    String
   tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  active    Boolean           @default(true)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
   webhooks  WebhookDelivery[]
 }
 
 model WebhookDelivery {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
   url         String
-  payload     Json
-  status      String   @default("pending") // pending, success, failed
-  retryCount  Int      @default(0)
+  payload     String
+  status      String    @default("pending") // pending, success, failed
+  retryCount  Int       @default(0)
   lastError   String?
   nextAttempt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  apiKey      ApiKey?   @relation(fields: [apiKeyId], references: [id])
+  apiKeyId    String?
 
   @@index([status])
   @@index([tenantId])

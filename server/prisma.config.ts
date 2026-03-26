@@ -9,6 +9,6 @@ export default defineConfig({
     seed: "ts-node --transpile-only prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"]!,
+    url: "file:./dev.db", // 🛠️ Put the SQLite path here instead!
   },
 });
