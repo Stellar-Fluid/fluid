@@ -10,15 +10,12 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "docs": "typedoc",
-    "test": "vitest run"
-    "build": "tsc",
+    "test": "vitest run",
     "build:worker": "tsc src/workers/signingWorker.ts --outDir dist --target ES2020 --module ESNext --lib ES2020,WebWorker,DOM",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
     "demo:sac-transfer-xdr": "ts-node src/examples/sacTransferXdr.ts",
-    "analyze": "tsup src/index.ts --format esm --metafile && echo 'Analyze metafile with a tool or visualizer'"
+    "analyze": "tsup src/index.ts --format esm --metafile && echo 'Analyze metafile with a tool or visualizer'",
     "demo": "python -m http.server 8080",
-    "test:performance": "open demo.html"
+    "test:performance": "open demo.html",
     "demo:wait-confirmation": "ts-node src/demo/waitForConfirmation.ts",
     "demo:wait-confirmation-only": "ts-node src/demo/waitForConfirmationOnly.ts",
     "test:compat": "ts-node test/stellarCompatibility.test.ts"
@@ -39,7 +36,8 @@
     "dotenv": "^16.3.1"
   },
   "peerDependencies": {
-    "react": ">=18"
+    "react": ">=18",
+    "vue": ">=3"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
@@ -50,7 +48,9 @@
     "stellar-sdk-v11": "npm:@stellar/stellar-sdk@11.3.0",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
-    "typescript": "^5.3.3"
+    "typedoc": "^0.28.18",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.2"
   },
   "files": [
     "dist/**/*",
@@ -66,9 +66,11 @@
     "./worker": {
       "import": "./dist/workers/signingWorker.js",
       "types": "./dist/workers/signingWorker.d.ts"
+    },
+    "./vue": {
+      "import": "./dist/vue/index.js",
+      "require": "./dist/vue/index.js",
+      "types": "./dist/vue/index.d.ts"
     }
-    "typedoc": "^0.28.18",
-    "typescript": "^5.3.3",
-    "vitest": "^4.1.2"
   }
 }
