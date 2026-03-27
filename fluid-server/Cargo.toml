@@ -35,7 +35,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "macros", "chrono", "uuid"] }
 
 [dev-dependencies]
-testcontainers = "0.15"
+testcontainers = "0.27"
 tokio-test = "0.4"
 rand = "0.8"
 
