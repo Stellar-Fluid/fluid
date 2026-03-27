@@ -95,6 +95,8 @@ fn parse_csv_env(key: &str) -> Option<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     fn unique_key(suffix: &str) -> String {
         format!("FLUID_TEST_{suffix}_{}", uuid::Uuid::new_v4())
@@ -102,6 +104,7 @@ mod tests {
 
     #[test]
     fn parse_csv_env_splits_trims_and_filters() {
+        let _lock = ENV_LOCK.lock().unwrap();
         let key = unique_key("CSV");
         std::env::set_var(&key, " a, ,b,  c  ,,");
         let value = parse_csv_env(&key).unwrap();
@@ -111,6 +114,7 @@ mod tests {
 
     #[test]
     fn env_parse_returns_default_on_missing_or_invalid() {
+        let _lock = ENV_LOCK.lock().unwrap();
         let missing = unique_key("MISSING");
         let value: u32 = env_parse(&missing, 42);
         assert_eq!(value, 42);
@@ -124,6 +128,7 @@ mod tests {
 
     #[test]
     fn load_config_errors_when_fee_payer_secret_missing() {
+        let _lock = ENV_LOCK.lock().unwrap();
         // Ensure the required secret isn't set for this test process.
         std::env::remove_var("FLUID_FEE_PAYER_SECRET");
         match load_config() {
@@ -137,6 +142,7 @@ mod tests {
 
     #[test]
     fn load_config_happy_path_parses_env_and_defaults() {
+        let _lock = ENV_LOCK.lock().unwrap();
         // Required
         std::env::set_var("FLUID_FEE_PAYER_SECRET", "SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 
@@ -184,6 +190,7 @@ mod tests {
 
     #[test]
     fn load_config_uses_legacy_horizon_url_when_list_empty() {
+        let _lock = ENV_LOCK.lock().unwrap();
         std::env::set_var("FLUID_FEE_PAYER_SECRET", "SBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
         std::env::remove_var("STELLAR_HORIZON_URLS");
         std::env::set_var("STELLAR_HORIZON_URL", "https://legacy.example");
