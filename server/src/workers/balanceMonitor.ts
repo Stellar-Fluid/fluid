@@ -1,6 +1,10 @@
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { Config } from "../config";
-import { AlertService } from "../services/alertService";
+import {
+  AlertService,
+  resolveLowBalanceCheckIntervalMs,
+  resolveLowBalanceThresholdXlm,
+} from "../services/alertService";
 
 export class BalanceMonitor {
   private readonly server: StellarSdk.Horizon.Server;
@@ -18,17 +22,20 @@ export class BalanceMonitor {
   }
 
   start(): void {
-    const threshold = this.config.alerting.lowBalanceThresholdXlm;
-    console.log("[BalanceMonitor] Starting balance monitor worker");
-    console.log(
-      `[BalanceMonitor] Poll interval: ${this.config.alerting.checkIntervalMs}ms`,
+    const threshold = resolveLowBalanceThresholdXlm(
+      this.config.alerting.lowBalanceThresholdXlm,
     );
+    const checkIntervalMs = resolveLowBalanceCheckIntervalMs(
+      this.config.alerting.checkIntervalMs,
+    );
+    console.log("[BalanceMonitor] Starting balance monitor worker");
+    console.log(`[BalanceMonitor] Poll interval: ${checkIntervalMs}ms`);
     console.log(`[BalanceMonitor] Threshold: ${threshold} XLM`);
 
     void this.checkBalances();
     this.intervalHandle = setInterval(() => {
       void this.checkBalances();
-    }, this.config.alerting.checkIntervalMs);
+    }, checkIntervalMs);
   }
 
   stop(): void {
@@ -42,7 +49,9 @@ export class BalanceMonitor {
   }
 
   async checkBalances(): Promise<void> {
-    const threshold = this.config.alerting.lowBalanceThresholdXlm;
+    const threshold = resolveLowBalanceThresholdXlm(
+      this.config.alerting.lowBalanceThresholdXlm,
+    );
     if (threshold === undefined) {
       return;
     }
