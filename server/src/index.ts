@@ -2,6 +2,8 @@ import "dotenv/config";
 
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./swagger";
 import rateLimit from "express-rate-limit";
 import { loadConfig } from "./config";
 import { AppError } from "./errors/AppError";
@@ -48,6 +50,14 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+// Swagger UI — available at /docs
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Raw OpenAPI JSON spec
+app.get("/docs.json", (_req: Request, res: Response) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
 
 const config = loadConfig();
 const slackNotifier = new SlackNotifier(loadSlackNotifierOptionsFromEnv());
