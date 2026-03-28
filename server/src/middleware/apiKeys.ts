@@ -25,6 +25,7 @@ export interface ApiKeyConfig {
   maxRequests: number;
   windowMs: number;
   dailyQuotaStroops: number;
+  isSandbox: boolean;
 }
 
 const API_KEYS = new Map<string, ApiKeyConfig>();
@@ -95,7 +96,8 @@ export async function apiKeyMiddleware(
       }
 
       const tierRecord = keyRecord.tenant?.subscriptionTier;
-      const resolvedTierName = (tierRecord?.name ?? "Free") as SubscriptionTierName;
+      const resolvedTierName = (tierRecord?.name ??
+        "Free") as SubscriptionTierName;
       const resolvedRateLimit = tierRecord?.rateLimit ?? keyRecord.maxRequests;
 
       const apiKeyConfig: ApiKeyConfig = {
@@ -111,6 +113,7 @@ export async function apiKeyMiddleware(
         maxRequests: resolvedRateLimit,
         windowMs: keyRecord.windowMs,
         dailyQuotaStroops: Number(keyRecord.dailyQuotaStroops),
+        isSandbox: keyRecord.isSandbox ?? false,
       };
 
       // Cache the key for future requests. Non-blocking: don't fail the request on cache errors.

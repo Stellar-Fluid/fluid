@@ -109,6 +109,12 @@ export default async function AdminDashboard() {
               Webhook settings
             </Link>
             <Link
+              href="/admin/sandbox"
+              className="inline-flex min-h-10 items-center justify-center rounded-full border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-700 transition hover:border-amber-400 hover:bg-amber-100"
+            >
+              Sandbox
+            </Link>
+            <Link
               href="/admin/signers"
               className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
             >

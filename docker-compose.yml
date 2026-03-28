@@ -1,5 +1,23 @@
 version: "3.9"
 services:
+  # Stellar Quickstart — isolated local network for sandbox testing
+  # Exposes Horizon on :8000 and Friendbot on :8000/friendbot
+  stellar-quickstart:
+    image: stellar/quickstart:latest
+    container_name: fluid-stellar-quickstart
+    command: ["--standalone", "--enable-soroban-rpc"]
+    ports:
+      - "8000:8000"
+    environment:
+      NETWORK: standalone
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - fluid-network
   postgres:
     image: postgres:15-alpine
     container_name: fluid-postgres
@@ -12,7 +30,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fluid} -d ${POSTGRES_DB:-fluid_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-fluid} -d ${POSTGRES_DB:-fluid_db}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -65,12 +87,15 @@ services:
       STELLAR_HORIZON_URL: "${STELLAR_HORIZON_URL:-https://horizon-testnet.stellar.org}"
       STELLAR_NETWORK_PASSPHRASE: "${STELLAR_NETWORK_PASSPHRASE:-Test SDF Network ; September 2015}"
       FLUID_ALLOWED_ORIGINS: "*"
+      SANDBOX_HORIZON_URL: "http://stellar-quickstart:8000"
     ports:
       - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      stellar-quickstart:
         condition: service_healthy
     networks:
       - fluid-network

@@ -11,6 +11,13 @@ import {
   upsertApiKeyHandler,
 } from "./handlers/adminApiKeys";
 import {
+  sandboxResetHandler,
+  sandboxStatusHandler,
+  createSandboxApiKeyHandler,
+} from "./handlers/sandbox";
+import { sandboxRateLimit } from "./middleware/sandboxGuard";
+import { startSandboxAutoReset } from "./workers/sandboxAutoReset";
+import {
   listSubscriptionTiersHandler,
   updateTenantSubscriptionTierHandler,
 } from "./handlers/adminSubscriptionTiers";
@@ -20,7 +27,10 @@ import {
   removeSignerHandler,
 } from "./handlers/adminSigners";
 import { feeBumpBatchHandler, feeBumpHandler } from "./handlers/feeBump";
-import { createCheckoutSessionHandler, stripeWebhookHandler } from "./handlers/stripe";
+import {
+  createCheckoutSessionHandler,
+  stripeWebhookHandler,
+} from "./handlers/stripe";
 import {
   getHorizonFailoverClient,
   initializeHorizonFailoverClient,
@@ -30,7 +40,10 @@ import { globalErrorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { apiKeyRateLimit } from "./middleware/rateLimit";
 import { tenantTierTxLimit } from "./middleware/txLimit";
 import { AlertService } from "./services/alertService";
-import { hydratePersistedSigners, listAdminSigners } from "./services/signerRegistry";
+import {
+  hydratePersistedSigners,
+  listAdminSigners,
+} from "./services/signerRegistry";
 import { createLogger, serializeError } from "./utils/logger";
 import redisClient from "./utils/redis";
 import { RedisRateLimitStore } from "./utils/redisRateLimitStore";
@@ -55,9 +68,13 @@ const fcmNotifier = initializeFcmNotifier();
 if (fcmNotifier.isConfigured()) {
   logger.info("FCM push notifications enabled");
 } else {
-  logger.info("FCM push notifications disabled - FCM_PROJECT_ID/FCM_CLIENT_EMAIL/FCM_PRIVATE_KEY not set");
+  logger.info(
+    "FCM push notifications disabled - FCM_PROJECT_ID/FCM_CLIENT_EMAIL/FCM_PRIVATE_KEY not set",
+  );
 }
-const alertService = new AlertService(config.alerting, slackNotifier, { fcmNotifier });
+const alertService = new AlertService(config.alerting, slackNotifier, {
+  fcmNotifier,
+});
 
 // Use Redis-backed store for global IP rate limiting. Falls back to memory store if Redis unavailable.
 const windowSeconds = Math.max(1, Math.ceil(config.rateLimitWindowMs / 1000));
@@ -221,8 +238,36 @@ app.get("/admin/api-keys", listApiKeysHandler);
 app.post("/admin/api-keys", upsertApiKeyHandler);
 app.patch("/admin/api-keys/:key/revoke", revokeApiKeyHandler);
 app.delete("/admin/api-keys/:key", revokeApiKeyHandler);
+
+// Sandbox endpoints (require sandbox API key)
+app.post(
+  "/sandbox/reset",
+  apiKeyMiddleware,
+  sandboxRateLimit,
+  (req: Request, res: Response, next: NextFunction) => {
+    void sandboxResetHandler(req, res, next);
+  },
+);
+app.get(
+  "/sandbox/status",
+  apiKeyMiddleware,
+  (req: Request, res: Response, next: NextFunction) => {
+    void sandboxStatusHandler(req, res, next);
+  },
+);
+
+// Admin: create sandbox API key
+app.post(
+  "/admin/sandbox/api-keys",
+  (req: Request, res: Response, next: NextFunction) => {
+    void createSandboxApiKeyHandler(req, res, next);
+  },
+);
 app.get("/admin/subscription-tiers", listSubscriptionTiersHandler);
-app.patch("/admin/tenants/:tenantId/subscription-tier", updateTenantSubscriptionTierHandler);
+app.patch(
+  "/admin/tenants/:tenantId/subscription-tier",
+  updateTenantSubscriptionTierHandler,
+);
 app.get("/admin/signers", listSignersHandler(config));
 app.post("/admin/signers", addSignerHandler(config));
 app.delete("/admin/signers/:publicKey", removeSignerHandler(config));
@@ -281,7 +326,10 @@ if (config.horizonUrls.length > 0) {
     ledgerMonitorInstance.start();
     logger.info("Ledger monitor worker started");
   } catch (error) {
-    logger.error({ ...serializeError(error) }, "Failed to start ledger monitor");
+    logger.error(
+      { ...serializeError(error) },
+      "Failed to start ledger monitor",
+    );
   }
 } else {
   logger.info("No Horizon URLs configured; ledger monitor disabled");
@@ -297,7 +345,10 @@ if (
     balanceMonitor.start();
     logger.info("Balance monitor worker started");
   } catch (error) {
-    logger.error({ ...serializeError(error) }, "Failed to start balance monitor");
+    logger.error(
+      { ...serializeError(error) },
+      "Failed to start balance monitor",
+    );
   }
 } else {
   logger.info(
@@ -307,11 +358,19 @@ if (
 
 if (pagerDutyNotifier.isConfigured() || fcmNotifier.isConfigured()) {
   try {
-    incidentMonitor = initializeIncidentMonitor(config, pagerDutyNotifier, {}, fcmNotifier);
+    incidentMonitor = initializeIncidentMonitor(
+      config,
+      pagerDutyNotifier,
+      {},
+      fcmNotifier,
+    );
     incidentMonitor.start();
     logger.info("Incident monitor worker started");
   } catch (error) {
-    logger.error({ ...serializeError(error) }, "Failed to start incident monitor");
+    logger.error(
+      { ...serializeError(error) },
+      "Failed to start incident monitor",
+    );
   }
 } else {
   logger.info("PagerDuty incident alerting disabled - routing key not set");
@@ -332,4 +391,7 @@ server = app.listen(PORT, () => {
     },
     "Fluid server started",
   );
+
+  // Start sandbox daily auto-reset worker
+  startSandboxAutoReset();
 });
