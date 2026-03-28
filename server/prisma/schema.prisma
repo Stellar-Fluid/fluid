@@ -179,3 +179,18 @@ model Transaction {
   @@index([status])
   @@index([txHash])
 }
+
+// In-dashboard notification centre — persisted alerts for logged-in admins.
+model AdminNotification {
+  id        String   @id @default(uuid())
+  type      String   // "low_balance" | "incident" | "info" | "warning" | "critical"
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  metadata  String?  // JSON blob for extra context (e.g. publicKey, balanceXlm)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([read])
+  @@index([createdAt])
+}

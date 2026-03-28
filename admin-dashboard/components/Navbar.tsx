@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationBell } from "./dashboard/NotificationBell";
 
 export function Navbar() {
     const pathname = usePathname();
+    const isAdmin = Boolean(pathname?.startsWith("/admin"));
     const badge =
-        pathname === "/" ? "Developer portal" : pathname?.startsWith("/admin") ? "Admin" : null;
+        pathname === "/" ? "Developer portal" : isAdmin ? "Admin" : null;
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-zinc-200/50 bg-white/70 backdrop-blur-xl transition-all dark:border-zinc-800/50 dark:bg-background/70">
@@ -72,6 +74,7 @@ export function Navbar() {
                         Changelog
                     </Link>
                     <ThemeToggle />
+                    {isAdmin && <NotificationBell />}
                 </nav>
             </div>
         </header>

@@ -43,6 +43,13 @@ import {
 import { initializeIncidentMonitor } from "./workers/incidentMonitor";
 import { transactionStore } from "./workers/transactionStore";
 import { healthHandler } from "./handlers/health";
+import {
+  listNotificationsHandler,
+  createNotificationHandler,
+  markReadHandler,
+  markAllReadHandler,
+  notificationSseHandler,
+} from "./handlers/adminNotifications";
 
 dotenv.config();
 
@@ -234,6 +241,23 @@ app.delete("/admin/signers/:publicKey", removeSignerHandler(config));
 app.get("/admin/device-tokens", listDeviceTokensHandler);
 app.post("/admin/device-tokens", registerDeviceTokenHandler);
 app.delete("/admin/device-tokens/:id", deleteDeviceTokenHandler);
+
+// Notification centre routes (SSE must be registered before /:id/read)
+app.get("/admin/notifications/sse", (req: Request, res: Response) =>
+  notificationSseHandler(req, res)
+);
+app.get("/admin/notifications", (req: Request, res: Response) => {
+  void listNotificationsHandler(req, res);
+});
+app.post("/admin/notifications", (req: Request, res: Response) => {
+  void createNotificationHandler(req, res);
+});
+app.patch("/admin/notifications/read-all", (req: Request, res: Response) => {
+  void markAllReadHandler(req, res);
+});
+app.patch("/admin/notifications/:id/read", (req: Request, res: Response) => {
+  void markReadHandler(req, res);
+});
 
 app.post(
   "/stripe/webhook",
