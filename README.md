@@ -77,6 +77,51 @@ npm run parity:rust
 
 The TypeScript client remains in `client/` and can continue targeting the same HTTP API.
 
+### CDN / Script-Tag Usage (no build step required)
+
+For projects that don't use a bundler, load Fluid directly from a CDN:
+
+```html
+<!-- unpkg (latest) -->
+<script src="https://unpkg.com/fluid-client@latest/dist/fluid.min.js"></script>
+
+<!-- jsDelivr (latest) -->
+<script src="https://cdn.jsdelivr.net/npm/fluid-client@latest/dist/fluid.min.js"></script>
+
+<!-- pinned version (recommended for production) -->
+<script src="https://unpkg.com/fluid-client@0.1.0/dist/fluid.min.js"></script>
+```
+
+The bundle exposes a global `Fluid` object:
+
+```html
+<script src="https://unpkg.com/fluid-client@latest/dist/fluid.min.js"></script>
+<script>
+  // All exports are available under the Fluid namespace
+  console.log(Fluid.VERSION); // "0.1.0"
+
+  const client = new Fluid.FluidClient({
+    serverUrl: 'https://your-fluid-server.example.com',
+    networkPassphrase: 'Test SDF Network ; September 2015',
+    horizonUrl: 'https://horizon-testnet.stellar.org',
+  });
+
+  // Sign your transaction with the user's wallet, then request a fee-bump
+  const result = await client.requestFeeBump(signedTransactionXdr);
+  console.log('Fee-bump XDR:', result.xdr);
+</script>
+```
+
+#### Building the standalone bundle locally
+
+```bash
+cd client
+npm install
+npm run build:standalone   # outputs client/dist/fluid.min.js
+```
+
+A self-contained demo is available at [`client/demo/cdn-demo.html`](client/demo/cdn-demo.html) — open it in a browser after building.
+
 ## Migration
 
 See `MIGRATION_GUIDE.md` for the Rust cutover path, environment mapping, and rollout guidance.

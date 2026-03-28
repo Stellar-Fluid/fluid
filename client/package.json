@@ -8,7 +8,8 @@
   "files": [
     "dist/**/*",
     "src/**/*",
-    "README.md"
+    "README.md",
+    "tsup.config.ts"
   ],
   "exports": {
     ".": {
@@ -24,6 +25,7 @@
   "scripts": {
     "build": "tsc",
     "build:worker": "tsc src/workers/signingWorker.ts --outDir dist --target ES2020 --module ESNext --lib ES2020,WebWorker,DOM",
+    "build:standalone": "tsup --config tsup.config.ts",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "lint": "echo \"No lint configured\"",

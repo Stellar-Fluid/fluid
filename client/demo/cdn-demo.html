@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fluid SDK – CDN / Script-Tag Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; background: #0f172a; color: #e2e8f0; }
+    h1 { color: #38bdf8; }
+    h2 { color: #7dd3fc; margin-top: 2rem; }
+    pre { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; overflow-x: auto; font-size: 13px; }
+    code { color: #a5f3fc; }
+    button { background: #0ea5e9; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 4px 2px; }
+    button:hover { background: #38bdf8; }
+    button:disabled { background: #475569; cursor: not-allowed; }
+    #log { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; min-height: 120px; font-family: monospace; font-size: 13px; white-space: pre-wrap; overflow-y: auto; max-height: 400px; }
+    .ok  { color: #4ade80; }
+    .err { color: #f87171; }
+    .inf { color: #94a3b8; }
+    #status { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>⚡ Fluid SDK – No-Build Demo</h1>
+  <p>
+    This page loads the Fluid client via a plain <code>&lt;script&gt;</code> tag — no Webpack,
+    Vite, or bundler required. Open the browser console to see the <code>Fluid</code> global.
+  </p>
+
+  <!--
+    In production, replace the src with the unpkg / jsDelivr CDN URL, e.g.:
+    https://unpkg.com/fluid-client@latest/dist/fluid.min.js
+  -->
+  <script src="../dist/fluid.min.js"></script>
+
+  <h2>SDK Version</h2>
+  <pre><code id="version">Loading…</code></pre>
+
+  <h2>Interactive Test</h2>
+  <p>
+    The demo below creates a <code>FluidClient</code> instance, then calls the
+    <code>/fee-bump</code> endpoint on a locally running Fluid server
+    (<code>http://localhost:3000</code>). Make sure the server is running before clicking
+    <em>Run Fee-Bump</em>.
+  </p>
+  <p>Status: <span id="status" class="inf">idle</span></p>
+  <div>
+    <button id="btn-init">1 · Instantiate Client</button>
+    <button id="btn-feebump" disabled>2 · Run Fee-Bump (needs server)</button>
+    <button id="btn-clear">Clear log</button>
+  </div>
+  <br />
+  <div id="log"></div>
+
+  <script>
+    // ─── helpers ───────────────────────────────────────────────────────────────
+    const log = document.getElementById('log');
+    const status = document.getElementById('status');
+
+    function print(msg, cls = 'inf') {
+      const line = document.createElement('span');
+      line.className = cls;
+      line.textContent = msg + '\n';
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function setStatus(msg, cls) {
+      status.textContent = msg;
+      status.className = cls;
+    }
+
+    // ─── show SDK version ──────────────────────────────────────────────────────
+    document.getElementById('version').textContent =
+      'Fluid.VERSION = ' + Fluid.VERSION;
+
+    print('Fluid global available: ' + (typeof Fluid !== 'undefined'), 'ok');
+    print('Fluid.FluidClient: ' + typeof Fluid.FluidClient, 'ok');
+    print('Fluid.VERSION: ' + Fluid.VERSION, 'ok');
+
+    // ─── Instantiate client ────────────────────────────────────────────────────
+    let client;
+
+    document.getElementById('btn-init').addEventListener('click', () => {
+      try {
+        client = new Fluid.FluidClient({
+          serverUrl: 'http://localhost:3000',
+          networkPassphrase: 'Test SDF Network ; September 2015',
+          horizonUrl: 'https://horizon-testnet.stellar.org',
+        });
+        print('FluidClient instantiated successfully ✓', 'ok');
+        setStatus('client ready', 'ok');
+        document.getElementById('btn-feebump').disabled = false;
+      } catch (e) {
+        print('Error: ' + e.message, 'err');
+        setStatus('error', 'err');
+      }
+    });
+
+    // ─── Fee-bump demo ─────────────────────────────────────────────────────────
+    document.getElementById('btn-feebump').addEventListener('click', async () => {
+      if (!client) { print('Instantiate the client first.', 'err'); return; }
+      setStatus('running…', 'inf');
+      print('─── Starting fee-bump demo ───', 'inf');
+
+      try {
+        // 1. Generate a throwaway keypair
+        const StellarSdk = window.StellarSdk || Fluid._StellarSdk;
+
+        // The standalone bundle re-exports the Stellar SDK helpers, but for
+        // this demo we can also reach it through the browser-global if loaded
+        // separately. Here we'll just send a dummy XDR to show the round-trip.
+        const dummyXdr = 'AAAAAQAAAAC7JAuE3XvquOnbsgv2SRztjuk4RoBVefQ0rlrFMMQvfAAABdwAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAQAAAAC7JAuE3XvquOnbsgv2SRztjuk4RoBVefQ0rlrFMMQvfAAAAAAAAAAAAAA9CQAAAAAAAAAA';
+
+        print('Sending XDR to /fee-bump…', 'inf');
+        const result = await client.requestFeeBump(dummyXdr, false);
+        print('Response received:', 'ok');
+        print(JSON.stringify(result, null, 2), 'ok');
+        setStatus('success ✓', 'ok');
+      } catch (e) {
+        print('Error: ' + e.message, 'err');
+        print('(Is the Fluid server running on http://localhost:3000?)', 'inf');
+        setStatus('error', 'err');
+      }
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      log.innerHTML = '';
+    });
+  </script>
+</body>
+</html>

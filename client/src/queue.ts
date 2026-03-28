@@ -1,4 +1,4 @@
-import { FluidClient, FeeBumpResponse } from "./index";
+import { FluidClient, FeeBumpResponse } from "./FluidClient";
 
 /**
  * Represents a single queued transaction waiting to be submitted.

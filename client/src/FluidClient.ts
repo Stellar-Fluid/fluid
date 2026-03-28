@@ -186,7 +186,7 @@ export class FluidClient {
         const requestError =
           error instanceof Error ? (error as RequestError) : new Error(String(error));
 
-        if (requestError.status === 400) {
+        if ((requestError as RequestError).status === 400) {
           throw requestError;
         }
 

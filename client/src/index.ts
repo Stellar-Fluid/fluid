@@ -91,7 +91,7 @@ export class FluidClient {
   private worker?: Worker;
   private pendingRequests: Map<
     string,
-    { resolve: Function; reject: Function; timeout: number }
+    { resolve: Function; reject: Function; timeout: ReturnType<typeof setTimeout> }
   > = new Map();
   private requestIdCounter: number = 0;
   private horizonUrl?: string;
@@ -260,7 +260,7 @@ export class FluidClient {
         const requestError =
           error instanceof Error ? (error as RequestError) : new Error(String(error));
 
-        if (requestError.status === 400) {
+        if ((requestError as RequestError).status === 400) {
           throw requestError;
         }
 
@@ -519,16 +519,7 @@ export class FluidClient {
       sorobanServer: this.sorobanServer,
     });
   }
-}
 
-export * from "./soroban";
-export {
-  collectTelemetry,
-  createTelemetryCollector,
-  isTelemetryEnabled,
-  getTelemetryConfig,
-} from "./telemetry";
-export type { TelemetryConfig, TelemetryData } from "./telemetry";
   // New method for performance testing
   async signMultipleTransactions(
     transactions: any[],
@@ -574,6 +565,15 @@ export type { TelemetryConfig, TelemetryData } from "./telemetry";
     this.pendingRequests.clear();
   }
 }
+
+export * from "./soroban";
+export {
+  collectTelemetry,
+  createTelemetryCollector,
+  isTelemetryEnabled,
+  getTelemetryConfig,
+} from "./telemetry";
+export type { TelemetryConfig, TelemetryData } from "./telemetry";
 
 export { FluidQueue } from "./queue";
 export type { QueuedTransaction, FluidQueueCallbacks } from "./queue";
@@ -635,6 +635,6 @@ async function main() {
   console.log("Transaction submitted! Hash:", submitResult.hash);
 }
 
-if (require.main === module) {
+if (typeof require !== "undefined" && require.main === module) {
   main().catch(console.error);
 }
