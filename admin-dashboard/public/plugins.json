@@ -1,0 +1,124 @@
+{
+  "plugins": [
+    {
+      "id": "fluid-react",
+      "name": "Fluid React",
+      "author": "fluid-community",
+      "authorUrl": "https://github.com/fluid-community",
+      "description": "React hooks and context provider for Fluid fee sponsorship. Provides useFeeBump, useFluidClient, and useTransactionStatus hooks with built-in loading and error states.",
+      "installCommand": "npm install fluid-react",
+      "githubUrl": "https://github.com/fluid-community/fluid-react",
+      "stars": 214,
+      "tags": ["React", "TypeScript", "hooks"],
+      "featured": true
+    },
+    {
+      "id": "fluid-vue",
+      "name": "Fluid Vue",
+      "author": "stellarbuilder",
+      "authorUrl": "https://github.com/stellarbuilder",
+      "description": "Vue 3 composables for Fluid. Drop-in useFeeBump and useFluidClient composables with Pinia store integration and automatic retry on fee errors.",
+      "installCommand": "npm install fluid-vue",
+      "githubUrl": "https://github.com/stellarbuilder/fluid-vue",
+      "stars": 97,
+      "tags": ["Vue", "TypeScript", "composables"],
+      "featured": true
+    },
+    {
+      "id": "fluid-py",
+      "name": "fluid-py",
+      "author": "soroban-labs",
+      "authorUrl": "https://github.com/soroban-labs",
+      "description": "Python client for the Fluid fee sponsorship API. Fully async with httpx, supports batch fee bumps, and ships with a Django middleware for per-request sponsorship.",
+      "installCommand": "pip install fluid-py",
+      "githubUrl": "https://github.com/soroban-labs/fluid-py",
+      "stars": 183,
+      "tags": ["Python", "async", "Django"],
+      "featured": true
+    },
+    {
+      "id": "fluid-go",
+      "name": "fluid-go",
+      "author": "xlm-go",
+      "authorUrl": "https://github.com/xlm-go",
+      "description": "Idiomatic Go client library for Fluid. Thread-safe, uses context.Context for cancellation, and integrates with the official Stellar Go SDK for XDR building.",
+      "installCommand": "go get github.com/xlm-go/fluid-go",
+      "githubUrl": "https://github.com/xlm-go/fluid-go",
+      "stars": 76,
+      "tags": ["Go", "Stellar"],
+      "featured": false
+    },
+    {
+      "id": "soroban-fee-adapter",
+      "name": "Soroban Fee Adapter",
+      "author": "soroban-labs",
+      "authorUrl": "https://github.com/soroban-labs",
+      "description": "Wraps Soroban contract invocations with automatic Fluid fee bumps. Intercepts simulation results, builds the inner XDR, and requests sponsorship transparently.",
+      "installCommand": "npm install soroban-fee-adapter",
+      "githubUrl": "https://github.com/soroban-labs/soroban-fee-adapter",
+      "stars": 142,
+      "tags": ["Soroban", "TypeScript", "contracts"],
+      "featured": false
+    },
+    {
+      "id": "fluid-svelte",
+      "name": "Fluid Svelte",
+      "author": "svelte-stellar",
+      "authorUrl": "https://github.com/svelte-stellar",
+      "description": "Svelte stores and actions for Fluid. Reactive feeBumpStore and createFluidAction with SvelteKit server-side fee bumping support.",
+      "installCommand": "npm install fluid-svelte",
+      "githubUrl": "https://github.com/svelte-stellar/fluid-svelte",
+      "stars": 58,
+      "tags": ["Svelte", "TypeScript", "SvelteKit"],
+      "featured": false
+    },
+    {
+      "id": "fluid-rust",
+      "name": "fluid-rs",
+      "author": "stellar-rs",
+      "authorUrl": "https://github.com/stellar-rs",
+      "description": "Rust async client for Fluid built on tokio + reqwest. Zero unsafe, strongly typed XDR, and compatible with the stellar-xdr crate for building fee-bump transactions.",
+      "installCommand": "cargo add fluid-rs",
+      "githubUrl": "https://github.com/stellar-rs/fluid-rs",
+      "stars": 61,
+      "tags": ["Rust", "async", "Soroban"],
+      "featured": false
+    },
+    {
+      "id": "fluid-next",
+      "name": "Fluid Next.js",
+      "author": "fluid-community",
+      "authorUrl": "https://github.com/fluid-community",
+      "description": "Next.js App Router integration with server actions and route handlers for Fluid. Auto-signs fee-bump requests server-side so API keys never reach the client.",
+      "installCommand": "npm install fluid-next",
+      "githubUrl": "https://github.com/fluid-community/fluid-next",
+      "stars": 109,
+      "tags": ["React", "Next.js", "TypeScript", "server-actions"],
+      "featured": false
+    },
+    {
+      "id": "fluid-kotlin",
+      "name": "FluidKt",
+      "author": "android-stellar",
+      "authorUrl": "https://github.com/android-stellar",
+      "description": "Kotlin/JVM client for Android and backend apps. Coroutines-first, supports both OkHttp and Ktor engines, and ships with a Retrofit adapter for existing API clients.",
+      "installCommand": "implementation(\"io.github.android-stellar:fluid-kt:latest\")",
+      "githubUrl": "https://github.com/android-stellar/fluid-kt",
+      "stars": 44,
+      "tags": ["Kotlin", "Android", "JVM"],
+      "featured": false
+    },
+    {
+      "id": "freighter-fluid-bridge",
+      "name": "Freighter × Fluid Bridge",
+      "author": "wallet-connect-stellar",
+      "authorUrl": "https://github.com/wallet-connect-stellar",
+      "description": "Bridges Freighter wallet signing with Fluid fee sponsorship in one call. Sign with Freighter, bump fees with Fluid, and submit—all with a single signAndSponsor() helper.",
+      "installCommand": "npm install freighter-fluid-bridge",
+      "githubUrl": "https://github.com/wallet-connect-stellar/freighter-fluid-bridge",
+      "stars": 88,
+      "tags": ["React", "Freighter", "TypeScript"],
+      "featured": false
+    }
+  ]
+}

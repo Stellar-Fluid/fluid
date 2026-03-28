@@ -222,6 +222,12 @@ export function DeveloperPortalLanding() {
             >
               Documentation
             </a>
+            <Link
+              href="/plugins"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Plugin Marketplace
+            </Link>
             <a
               href={github}
               className="text-sm font-medium text-primary hover:underline"
