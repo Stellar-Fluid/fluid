@@ -57,7 +57,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
-    "@storybook/addon-themes": "^8.6.12",
+    "@storybook/addon-themes": "^10.4.0",
     "@storybook/nextjs": "^8.6.12",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
