@@ -27,7 +27,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-switch": "^1.2.6",
     "@stellar/freighter-api": "^6.0.1",
-    "@stellar/stellar-sdk": "^14.6.1",
+    "@stellar/stellar-sdk": "^15.1.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-table": "^8.21.3",
     "@types/rss": "^0.0.32",
